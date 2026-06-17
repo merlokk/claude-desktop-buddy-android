@@ -5,6 +5,9 @@ build/
 # Local configuration file (sdk path, etc)
 local.properties
 
+# Machine-specific working notes (paths, run/test/log commands)
+local-memory.md
+
 # Log/OS Files
 *.log
 

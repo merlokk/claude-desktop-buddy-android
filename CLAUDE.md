@@ -165,6 +165,11 @@ exactly what crossed the wire, independent of parsing.
 ./gradlew assembleDebug        # build the debug APK
 ```
 
+If a `local-memory.md` file exists at the repo root, read it first: it holds the environment-specific
+details for the current machine — exact commands to run the tests, build/install/launch the app on a
+device, and read its logs (SDK/JDK paths, the device serial, the right Gradle flags, etc.). It is
+gitignored and machine-local, so it is the source of truth for *how* to run things here.
+
 ## Git workflow
 
 Commit directly to `main` — this project does not use feature branches. (Per the global commit
