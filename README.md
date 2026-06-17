@@ -15,7 +15,9 @@ the Nordic UART Service, so from the desktop's point of view it is just another 
 - **Logs screen** — the raw line-by-line JSON exchanged with the desktop. Toggleable, and **off by
   default**.
 - **Folder push** — folders dropped on the desktop's Hardware Buddy window are received and saved to
-  the app's private storage (the bytes are persisted; the pet/character they describe isn't rendered).
+  the app's private storage.
+- **Character avatar** — a pushed character pack is shown as an animated GIF avatar in the top-left
+  of the Buddy screen, switching between sleep / idle / busy / attention to match what Claude is doing.
 
 ## Requirements
 
@@ -79,23 +81,24 @@ answered from the phone. Flip on the **Logs** toggle to watch the raw JSON excha
 ./gradlew connectedAndroidTest # instrumented tests — needs a connected device/emulator
 ```
 
-The protocol parsing/serialization, line framing, buddy state, exchange log, and orchestration are
-pure Kotlin and covered by JVM unit tests. The Android edges are thin and mostly verified by running
-on a device; the one instrumented test (`AndroidCharacterPackSinkTest`) runs the folder-push write
-path on the device and asserts the pushed files land in app storage with the right bytes (including
-nested paths and a rejected escaping path). The BLE transport itself is verified by running the app.
+The protocol parsing/serialization, line framing, buddy state, avatar state mapping, exchange log,
+and orchestration are pure Kotlin and covered by JVM unit tests. The Android edges are thin and
+verified by instrumented tests on a device: `AndroidCharacterPackSinkTest` runs the folder-push
+write/read-back path (files land in app storage with the right bytes, including nested paths and a
+rejected escaping path), and `AvatarViewTest` renders the avatar from a real GIF pack. The BLE
+transport itself is verified by running the app.
 
 ## Project layout
 
 ```
 app/src/main/java/com/example/claudedesktopbuddy/
-  protocol/    Wire protocol: parsing inbound messages, serializing outbound ones
+  protocol/    Wire protocol: in/out messages + the character-pack manifest parser
   transport/   DesktopTransport interface + line framing (\n) — Bluetooth-free
-  buddy/       BuddyState (domain) + BuddyViewModel orchestration + folder-push receiver + ViewModel wrapper
+  buddy/       BuddyState + BuddyViewModel orchestration + folder-push receiver + avatar state mapping
   log/         ExchangeLog — the raw-traffic log model
   ble/         BleDesktopTransport — the real BLE peripheral (Nordic UART GATT server)
-  device/      Android status provider (battery/uptime/heap) + folder-push file sink
-  ui/          Compose screens (BuddyScreen, LogsScreen)
+  device/      Android status provider + folder-push file sink + character-pack provider
+  ui/          Compose screens (BuddyScreen, LogsScreen) + AvatarView
 ```
 
 The dependencies point inward: UI → domain → the transport interface, and the BLE implementation
