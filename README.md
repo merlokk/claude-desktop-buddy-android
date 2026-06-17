@@ -39,6 +39,8 @@ Android Studio writes this file automatically when you open the project.
 
 ## Build
 
+> **Windows:** use `.\gradlew` (or `gradlew.bat`) in place of `./gradlew` in every command below.
+
 ```bash
 ./gradlew assembleDebug      # build the debug APK
 ```
