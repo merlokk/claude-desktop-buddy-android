@@ -103,10 +103,14 @@ These parts of the protocol are intentionally not built yet:
 - **Folder push** (`char_begin` / `file` / `chunk` / `file_end` / `char_end`) — the folder-drop
   streaming. We don't ack `char_begin`, so the desktop times out and reports it failed. This goes
   with not porting the pet/character features.
-- **Link encryption / bonding** — no LE Secure Connections pairing. The status ack reports
-  `"sec": false`, the GATT characteristics are not marked encrypted-only, and `unpair` has no
-  stored bonds to erase (it is still acked). Transcript snippets and tool-call hints therefore
-  travel unencrypted.
+- **Link encryption / bonding** — the link is unencrypted, so the status ack reports `"sec": false`
+  and transcript snippets and tool-call hints travel in the clear. This was attempted (encrypted
+  GATT permissions to force pairing) and reverted: as a peripheral, Android can't drive the
+  protocol's recommended pairing — no control of the IO capability (only Just Works, no displayed
+  passkey), no way to send a *Service Changed* indication, and `removeBond()` is blocked on Android
+  16, so bonds desync the moment the desktop "Forget"s and reconnects fail with
+  `HCI_ERR_AUTH_FAILURE`. The `sec` flag and the `unpair` hook stay plumbed (transport
+  `isLinkSecure` / `unpair`) with safe defaults, ready if a viable approach appears.
 - **Turn events and time sync** — `{"evt":"turn",...}` and `{"time":[...]}` are parsed but not yet
   surfaced (no transcript view, no clock use).
 - **Status `stats` pet fields and battery current** — `vel` / `nap` / `lvl` are pet-specific and

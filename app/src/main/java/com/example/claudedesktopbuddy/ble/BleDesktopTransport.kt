@@ -202,6 +202,10 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
     private fun buildService(): BluetoothGattService {
         val service = BluetoothGattService(NordicUart.SERVICE, BluetoothGattService.SERVICE_TYPE_PRIMARY)
 
+        // Plain (unencrypted) permissions: Android peripherals can't drive the protocol's
+        // recommended LE Secure pairing (no passkey IO control, no Service Changed, and removeBond
+        // is blocked), so requiring encryption only desynced bonds and broke the link. See the
+        // Security note in docs/REFERENCE.md and the "Not yet implemented" section in CLAUDE.md.
         val rx = BluetoothGattCharacteristic(
             NordicUart.RX,
             BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,

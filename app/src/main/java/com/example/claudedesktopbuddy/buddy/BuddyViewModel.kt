@@ -68,7 +68,11 @@ class BuddyViewModel(
     private fun handleCommand(command: InboundMessage.Command) {
         when (command.verb) {
             CommandVerbs.STATUS -> sendStatusAck()
-            CommandVerbs.NAME, CommandVerbs.OWNER, CommandVerbs.UNPAIR -> sendAck(command.verb)
+            CommandVerbs.UNPAIR -> {
+                transport.unpair()
+                sendAck(command.verb)
+            }
+            CommandVerbs.NAME, CommandVerbs.OWNER -> sendAck(command.verb)
         }
     }
 
@@ -81,6 +85,7 @@ class BuddyViewModel(
         val base = statusProvider.status()
         val status = base.copy(
             name = current.deviceName ?: base.name,
+            secure = transport.isLinkSecure,
             stats = BuddyStats(approvals = current.approvals, denials = current.denials),
         )
         send(ProtocolSerializer.encode(OutboundMessage.StatusAck(status)))

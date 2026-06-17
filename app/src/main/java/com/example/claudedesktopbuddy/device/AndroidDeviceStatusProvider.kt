@@ -15,9 +15,8 @@ import com.example.claudedesktopbuddy.protocol.SystemStatus
  * Reads the phone's hardware telemetry for a status ack: battery level/voltage/charging from the
  * sticky `ACTION_BATTERY_CHANGED` intent, uptime since boot, and free JVM heap.
  *
- * `secure` is reported as `false` because this transport does not yet bond/encrypt the BLE link
- * (see the Security section of `docs/REFERENCE.md`). The app-level approval/denial stats are added
- * by the orchestrator, not here.
+ * Link security (`sec`) and the approval/denial stats are not set here — the orchestrator fills
+ * those from the transport and its own state.
  */
 class AndroidDeviceStatusProvider(context: Context) : DeviceStatusProvider {
 
@@ -25,7 +24,6 @@ class AndroidDeviceStatusProvider(context: Context) : DeviceStatusProvider {
 
     override fun status(): DeviceStatus = DeviceStatus(
         name = Build.MODEL,
-        secure = false,
         battery = readBattery(),
         system = readSystem(),
     )

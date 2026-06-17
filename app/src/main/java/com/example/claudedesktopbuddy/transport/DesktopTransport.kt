@@ -30,4 +30,10 @@ interface DesktopTransport {
 
     /** Releases the link and any radio resources. Default: no-op. */
     fun stop() {}
+
+    /** Whether the current link is encrypted/bonded. Reported as `sec` in the status ack. */
+    val isLinkSecure: Boolean get() = false
+
+    /** Erases the bond with the connected peer, if any (handles the `unpair` command). Default: no-op. */
+    fun unpair() {}
 }

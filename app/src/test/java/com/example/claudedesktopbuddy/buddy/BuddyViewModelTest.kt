@@ -22,13 +22,21 @@ import org.junit.Test
 class BuddyViewModelTest {
 
     /** In-memory transport: incoming lines are pushed via [emit]; outgoing lines collect in [sent]. */
-    private class FakeDesktopTransport : DesktopTransport {
+    private class FakeDesktopTransport(
+        override val isLinkSecure: Boolean = false,
+    ) : DesktopTransport {
         private val _incoming = MutableSharedFlow<String>(extraBufferCapacity = 64)
         override val incoming: SharedFlow<String> = _incoming.asSharedFlow()
         val sent = mutableListOf<String>()
+        var unpairCount = 0
+            private set
 
         override suspend fun send(line: String) {
             sent += line
+        }
+
+        override fun unpair() {
+            unpairCount++
         }
 
         suspend fun emit(line: String) = _incoming.emit(line)
@@ -197,9 +205,33 @@ class BuddyViewModelTest {
 
         val statusAck = transport.sent.last()
         assertEquals(
-            """{"ack":"status","ok":true,"data":{"stats":{"appr":1,"deny":0}}}""",
+            """{"ack":"status","ok":true,"data":{"sec":false,"stats":{"appr":1,"deny":0}}}""",
             statusAck,
         )
+    }
+
+    @Test
+    fun `the status ack reports the link security from the transport`() = runTest {
+        val transport = FakeDesktopTransport(isLinkSecure = true)
+        val vm = newViewModel(transport)
+
+        transport.emit("""{"cmd":"status"}""")
+
+        assertEquals(
+            """{"ack":"status","ok":true,"data":{"sec":true,"stats":{"appr":0,"deny":0}}}""",
+            transport.sent.last(),
+        )
+    }
+
+    @Test
+    fun `an unpair command erases the bond via the transport`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+
+        transport.emit("""{"cmd":"unpair"}""")
+
+        assertEquals(1, transport.unpairCount)
+        assertEquals(listOf("""{"ack":"unpair","ok":true}"""), transport.sent)
     }
 
     @Test
@@ -231,7 +263,7 @@ class BuddyViewModelTest {
         transport.emit("""{"cmd":"status"}""")
 
         assertEquals(
-            """{"ack":"status","ok":true,"data":{"name":"Clawd","stats":{"appr":0,"deny":0}}}""",
+            """{"ack":"status","ok":true,"data":{"name":"Clawd","sec":false,"stats":{"appr":0,"deny":0}}}""",
             transport.sent.last(),
         )
     }
