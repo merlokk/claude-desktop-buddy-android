@@ -147,7 +147,7 @@ exactly what crossed the wire, independent of parsing.
 
 - Kotlin, Jetpack Compose (Material 3, adaptive navigation suite).
 - kotlinx.serialization for JSON, kotlinx.coroutines for the `Flow`-based transport.
-- `minSdk` 24, `targetSdk` / `compileSdk` 36. Version catalog in `gradle/libs.versions.toml`.
+- `minSdk` 24, `targetSdk` 36, `compileSdk` 36.1. Version catalog in `gradle/libs.versions.toml`.
 - Tests: JUnit4 + kotlinx-coroutines-test for JVM unit tests (`app/src/test`); Compose UI / Espresso
   for instrumented tests (`app/src/androidTest`). Favor JVM unit tests for domain and framing logic.
 - Package root: `com.example.claudedesktopbuddy`.

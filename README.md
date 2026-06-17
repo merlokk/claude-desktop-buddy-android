@@ -19,7 +19,7 @@ the Nordic UART Service, so from the desktop's point of view it is just another 
 
 - **JDK 21.** The Gradle daemon is pinned to a Java 21 toolchain
   (`gradle/gradle-daemon-jvm.properties`); Gradle auto-provisions it if your default JDK differs.
-- **Android SDK** with API level **36** installed.
+- **Android SDK** with the **36.1** platform installed (the build compiles against API 36.1).
 - An Android device or emulator running **API 24 (Android 7.0)** or newer. The BLE peripheral role
   needs real Bluetooth hardware that supports BLE advertising — most physical phones do; emulators
   generally do not.
