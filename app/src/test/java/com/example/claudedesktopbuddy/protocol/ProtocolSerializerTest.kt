@@ -69,7 +69,7 @@ class ProtocolSerializerTest {
                     secure = false,
                     battery = BatteryStatus(percent = 87, milliVolts = 4012, milliAmps = -120, onUsb = true),
                     system = SystemStatus(uptimeSeconds = 8412, freeHeapBytes = 84200),
-                    stats = BuddyStats(approvals = 42, denials = 3),
+                    stats = BuddyStats(approvals = 42, denials = 3, velocity = 8, naps = 12, level = 5),
                 ),
             ),
         )
@@ -77,7 +77,7 @@ class ProtocolSerializerTest {
         assertEquals(
             """{"ack":"status","ok":true,"data":{"name":"Pixel","sec":false,""" +
                 """"bat":{"pct":87,"mV":4012,"mA":-120,"usb":true},""" +
-                """"sys":{"up":8412,"heap":84200},"stats":{"appr":42,"deny":3}}}""",
+                """"sys":{"up":8412,"heap":84200},"stats":{"appr":42,"deny":3,"vel":8,"nap":12,"lvl":5}}}""",
             line,
         )
     }

@@ -54,6 +54,9 @@ object ProtocolSerializer {
             put("stats", buildJsonObject {
                 put("appr", stats.approvals)
                 put("deny", stats.denials)
+                put("vel", stats.velocity)
+                put("nap", stats.naps)
+                put("lvl", stats.level)
             })
         }
     }

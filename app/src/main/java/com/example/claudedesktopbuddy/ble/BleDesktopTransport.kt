@@ -171,9 +171,13 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
     }
 
     override suspend fun send(line: String) {
-        val server = gattServer ?: return
-        val characteristic = txCharacteristic ?: return
-        val device = central ?: return
+        val server = gattServer
+        val characteristic = txCharacteristic
+        val device = central
+        if (server == null || characteristic == null || device == null) {
+            Log.w(TAG, "send skipped: server=${server != null} char=${characteristic != null} central=${device != null}")
+            return
+        }
         val payload = encodeLine(line)
         val chunkSize = (mtu - ATT_HEADER_SIZE).coerceAtLeast(MIN_CHUNK_SIZE)
 
@@ -186,11 +190,13 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
                 val ack = CompletableDeferred<Boolean>()
                 pendingNotification = ack
                 val dispatched = notify(server, device, characteristic, chunk)
+                Log.d(TAG, "notify ${chunk.size}B dispatched=$dispatched")
                 if (!dispatched) {
                     pendingNotification = null
                     return
                 }
                 val delivered = withTimeoutOrNull(NOTIFY_TIMEOUT_MS) { ack.await() } ?: false
+                Log.d(TAG, "notify delivered=$delivered")
                 pendingNotification = null
                 if (!delivered) return
 
@@ -320,6 +326,7 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
         }
 
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
+            Log.d(TAG, "onNotificationSent status=$status")
             pendingNotification?.complete(status == BluetoothGatt.GATT_SUCCESS)
         }
 

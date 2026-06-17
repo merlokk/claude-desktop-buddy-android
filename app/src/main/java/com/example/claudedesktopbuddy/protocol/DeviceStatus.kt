@@ -27,8 +27,14 @@ data class SystemStatus(
     val freeHeapBytes: Long? = null,
 )
 
-/** App-level counters: how many permission prompts the user has approved and denied. */
+/**
+ * The status `stats` object. [approvals] / [denials] are our app-level counters; [velocity],
+ * [naps], and [level] are pet-specific fields the desktop expects — we have no pet, so they are 0.
+ */
 data class BuddyStats(
     val approvals: Int,
     val denials: Int,
+    val velocity: Int = 0,
+    val naps: Int = 0,
+    val level: Int = 0,
 )

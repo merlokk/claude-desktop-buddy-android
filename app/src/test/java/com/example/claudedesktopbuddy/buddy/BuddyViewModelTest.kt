@@ -224,7 +224,7 @@ class BuddyViewModelTest {
         assertEquals(
             listOf(
                 """{"ack":"status","ok":true,"data":{"name":"Pixel","sec":false,""" +
-                    """"bat":{"pct":87,"usb":true},"stats":{"appr":0,"deny":0}}}""",
+                    """"bat":{"pct":87,"usb":true},"stats":{"appr":0,"deny":0,"vel":0,"nap":0,"lvl":0}}}""",
             ),
             transport.sent,
         )
@@ -241,7 +241,7 @@ class BuddyViewModelTest {
 
         val statusAck = transport.sent.last()
         assertEquals(
-            """{"ack":"status","ok":true,"data":{"sec":false,"stats":{"appr":1,"deny":0}}}""",
+            """{"ack":"status","ok":true,"data":{"sec":false,"stats":{"appr":1,"deny":0,"vel":0,"nap":0,"lvl":0}}}""",
             statusAck,
         )
     }
@@ -254,7 +254,7 @@ class BuddyViewModelTest {
         transport.emit("""{"cmd":"status"}""")
 
         assertEquals(
-            """{"ack":"status","ok":true,"data":{"sec":true,"stats":{"appr":0,"deny":0}}}""",
+            """{"ack":"status","ok":true,"data":{"sec":true,"stats":{"appr":0,"deny":0,"vel":0,"nap":0,"lvl":0}}}""",
             transport.sent.last(),
         )
     }
@@ -299,7 +299,7 @@ class BuddyViewModelTest {
         transport.emit("""{"cmd":"status"}""")
 
         assertEquals(
-            """{"ack":"status","ok":true,"data":{"name":"Clawd","sec":false,"stats":{"appr":0,"deny":0}}}""",
+            """{"ack":"status","ok":true,"data":{"name":"Clawd","sec":false,"stats":{"appr":0,"deny":0,"vel":0,"nap":0,"lvl":0}}}""",
             transport.sent.last(),
         )
     }

@@ -114,8 +114,11 @@ These parts of the protocol are intentionally not built yet:
   16, so bonds desync the moment the desktop "Forget"s and reconnects fail with
   `HCI_ERR_AUTH_FAILURE`. The `sec` flag and the `unpair` hook stay plumbed (transport
   `isLinkSecure` / `unpair`) with safe defaults, ready if a viable approach appears.
-- **Status `stats` pet fields and battery current** — `vel` / `nap` / `lvl` are pet-specific and
-  omitted; battery `mA` is omitted because its sign and units are device-dependent on Android.
+- **Folder push / character preview** — the desktop's device preview is rendered from a character
+  pack pushed over folder push, which we don't accept (the pet feature), so the preview stays blank.
+  Note: the status ack must include the full `data` field set — `bat.mA` and the pet `stats`
+  (`vel`/`nap`/`lvl`, reported as 0) — or the desktop's status panel shows "No response"; these are
+  now sent.
 
 ## Architecture
 

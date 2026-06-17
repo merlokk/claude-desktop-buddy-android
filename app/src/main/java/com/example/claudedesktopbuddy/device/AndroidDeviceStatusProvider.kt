@@ -21,6 +21,7 @@ import com.example.claudedesktopbuddy.protocol.SystemStatus
 class AndroidDeviceStatusProvider(context: Context) : DeviceStatusProvider {
 
     private val appContext = context.applicationContext
+    private val batteryManager = appContext.getSystemService(BatteryManager::class.java)
 
     override fun status(): DeviceStatus = DeviceStatus(
         name = Build.MODEL,
@@ -40,8 +41,15 @@ class AndroidDeviceStatusProvider(context: Context) : DeviceStatusProvider {
         return BatteryStatus(
             percent = if (level >= 0 && scale > 0) level * 100 / scale else null,
             milliVolts = voltage.takeIf { it > 0 },
+            milliAmps = readMilliAmps(),
             onUsb = plugged == BatteryManager.BATTERY_PLUGGED_USB,
         )
+    }
+
+    /** Battery current in mA, negated so that negative means charging (the protocol convention). */
+    private fun readMilliAmps(): Int? {
+        val microAmps = batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+        return microAmps?.takeIf { it != Int.MIN_VALUE && it != 0 }?.let { -it / 1000 }
     }
 
     private fun readSystem(): SystemStatus {
