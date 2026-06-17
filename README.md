@@ -75,12 +75,15 @@ answered from the phone. Flip on the **Logs** toggle to watch the raw JSON excha
 ## Test
 
 ```bash
-./gradlew test               # JVM unit tests — the protocol, framing, state, and logic
+./gradlew test                 # JVM unit tests — the protocol, framing, state, and logic
+./gradlew connectedAndroidTest # instrumented tests — needs a connected device/emulator
 ```
 
 The protocol parsing/serialization, line framing, buddy state, exchange log, and orchestration are
-pure Kotlin and covered by JVM unit tests. The BLE transport is the thin Android edge and is
-verified on a device rather than by unit tests.
+pure Kotlin and covered by JVM unit tests. The Android edges are thin and mostly verified by running
+on a device; the one instrumented test (`AndroidCharacterPackSinkTest`) runs the folder-push write
+path on the device and asserts the pushed files land in app storage with the right bytes (including
+nested paths and a rejected escaping path). The BLE transport itself is verified by running the app.
 
 ## Project layout
 
