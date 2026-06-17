@@ -1,3 +1,26 @@
 <resources>
     <string name="app_name">claude desktop buddy</string>
+
+    <!-- Navigation -->
+    <string name="nav_buddy">Buddy</string>
+    <string name="nav_logs">Logs</string>
+
+    <!-- Buddy screen -->
+    <string name="activity_idle">Idle</string>
+    <string name="activity_busy">Working…</string>
+    <string name="activity_awaiting_approval">Waiting for you</string>
+    <string name="buddy_no_status">Nothing happening yet.</string>
+    <string name="buddy_tokens">Tokens: %1$d (today %2$d)</string>
+    <string name="buddy_recent_title">Recent</string>
+    <string name="prompt_question">Allow %1$s?</string>
+    <string name="action_approve">Approve</string>
+    <string name="action_deny">Deny</string>
+
+    <!-- Logs screen -->
+    <string name="logs_enable">Log exchange</string>
+    <string name="logs_clear">Clear</string>
+    <string name="logs_empty">No traffic logged yet.</string>
+    <string name="logs_disabled_hint">Logging is off. Turn it on to record the raw exchange with the desktop.</string>
+    <string name="logs_incoming_arrow">←</string>
+    <string name="logs_outgoing_arrow">→</string>
 </resources>

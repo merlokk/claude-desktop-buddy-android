@@ -122,6 +122,12 @@ exactly what crossed the wire, independent of parsing.
 ./gradlew assembleDebug        # build the debug APK
 ```
 
+## Git workflow
+
+Commit directly to `main` — this project does not use feature branches. (Per the global commit
+rule, mark AI-assisted commits with a trailing ` +ai` on the subject line, not a `Co-Authored-By`
+trailer.)
+
 ## Permissions note
 
 Acting as a BLE peripheral on Android requires Bluetooth advertise/connect permissions

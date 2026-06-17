@@ -17,9 +17,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.claudedesktopbuddy.buddy.BuddyAndroidViewModel
+import com.example.claudedesktopbuddy.ui.BuddyScreen
+import com.example.claudedesktopbuddy.ui.LogsScreen
 import com.example.claudedesktopbuddy.ui.theme.ClaudeDesktopBuddyTheme
 
 class MainActivity : ComponentActivity() {
@@ -34,58 +37,52 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@PreviewScreenSizes
 @Composable
-fun ClaudeDesktopBuddyApp() {
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+fun ClaudeDesktopBuddyApp(
+    viewModel: BuddyAndroidViewModel = viewModel(factory = BuddyAndroidViewModel.Factory),
+) {
+    var current by rememberSaveable { mutableStateOf(AppDestination.BUDDY) }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val log by viewModel.log.collectAsStateWithLifecycle()
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
-            AppDestinations.entries.forEach {
+            AppDestination.entries.forEach { destination ->
                 item(
                     icon = {
-                        Icon(
-                            painterResource(it.icon),
-                            contentDescription = it.label
-                        )
+                        Icon(painterResource(destination.icon), contentDescription = null)
                     },
-                    label = { Text(it.label) },
-                    selected = it == currentDestination,
-                    onClick = { currentDestination = it }
+                    label = { Text(stringResource(destination.label)) },
+                    selected = destination == current,
+                    onClick = { current = destination },
+                )
+            }
+        },
+    ) {
+        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+            when (current) {
+                AppDestination.BUDDY -> BuddyScreen(
+                    state = state,
+                    onApprove = viewModel::approve,
+                    onDeny = viewModel::deny,
+                    modifier = Modifier.padding(innerPadding),
+                )
+
+                AppDestination.LOGS -> LogsScreen(
+                    log = log,
+                    onLoggingEnabledChange = viewModel::setLoggingEnabled,
+                    onClear = viewModel::clearLog,
+                    modifier = Modifier.padding(innerPadding),
                 )
             }
         }
-    ) {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Greeting(
-                name = "Android",
-                modifier = Modifier.padding(innerPadding)
-            )
-        }
     }
 }
 
-enum class AppDestinations(
-    val label: String,
+enum class AppDestination(
+    val label: Int,
     val icon: Int,
 ) {
-    HOME("Home", R.drawable.ic_home),
-    FAVORITES("Favorites", R.drawable.ic_favorite),
-    PROFILE("Profile", R.drawable.ic_account_box),
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ClaudeDesktopBuddyTheme {
-        Greeting("Android")
-    }
+    BUDDY(R.string.nav_buddy, R.drawable.ic_home),
+    LOGS(R.string.nav_logs, R.drawable.ic_logs),
 }
