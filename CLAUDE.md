@@ -85,23 +85,28 @@ Permission decision (echo the prompt `id`):
 `once` = approve, `deny` = reject. Status acks and generic command acks (`{"ack":"<cmd>","ok":true}`)
 are also sent on TX.
 
-See the original repo's `REFERENCE.md` for the full message catalog.
+See [`docs/REFERENCE.md`](docs/REFERENCE.md) for the full message catalog (a copy of the upstream
+protocol reference, with a link back to its source).
 
 ## Architecture
 
-Keep three layers separate; dependencies point inward (UI → domain → transport interface, never
-the reverse). The transport interface lives with the domain; the Android BLE implementation
-depends on it, not vice versa.
+Dependencies point inward: UI → domain → the transport interface, and the BLE implementation
+depends on that interface, never the reverse — so no Android Bluetooth type leaks into the logic.
+The code is organized by package (root `com.example.claudedesktopbuddy`):
 
-- **Transport (BLE).** Owns Android Bluetooth: advertising the GATT server, the RX/TX
-  characteristics, and the line-buffered framing (split incoming bytes on `\n`, append `\n` on
-  send). Exposes a plain interface — a stream of inbound JSON lines in, a sink for outbound JSON
-  lines out — and nothing Bluetooth-specific leaks past it.
-- **Domain / logic.** Parses and builds protocol messages, models buddy state (what Claude is
-  doing, the pending prompt), and decides what to send. Pure Kotlin, no Android dependencies, so
-  it is unit-testable on the JVM. This is where most TDD happens.
-- **UI (Jetpack Compose).** The two screens and a ViewModel observing domain state. No protocol
-  or Bluetooth logic here.
+- **`protocol`** — the wire protocol: parsing inbound messages and serializing outbound ones. Pure
+  Kotlin.
+- **`transport`** — the `DesktopTransport` interface (inbound JSON lines in, a sink for outbound
+  lines out) plus the line framing (split incoming bytes on `\n`, append `\n` on send).
+  Bluetooth-free, so the framing is unit-testable on the JVM.
+- **`ble`** — `BleDesktopTransport`, the real BLE peripheral that implements `DesktopTransport`:
+  advertising, the GATT server, the RX/TX characteristics. The only place Android Bluetooth APIs
+  are used.
+- **`buddy`** — the domain: `BuddyState` (what Claude is doing, the pending prompt), the
+  framework-free `BuddyViewModel` orchestration, and the thin Android `BuddyAndroidViewModel`
+  wrapper. Pure Kotlin apart from the wrapper; this is where most TDD happens.
+- **`log`** — `ExchangeLog`, the raw-traffic log model.
+- **`ui`** — the two Jetpack Compose screens. No protocol or Bluetooth logic here.
 
 The logging feature observes the raw line traffic at the transport boundary so it can record
 exactly what crossed the wire, independent of parsing.
@@ -109,9 +114,10 @@ exactly what crossed the wire, independent of parsing.
 ## Tech stack
 
 - Kotlin, Jetpack Compose (Material 3, adaptive navigation suite).
+- kotlinx.serialization for JSON, kotlinx.coroutines for the `Flow`-based transport.
 - `minSdk` 24, `targetSdk` / `compileSdk` 36. Version catalog in `gradle/libs.versions.toml`.
-- Tests: JUnit4 for JVM unit tests (`app/src/test`), Espresso / Compose UI test for instrumented
-  tests (`app/src/androidTest`). Favor JVM unit tests for domain and transport-framing logic.
+- Tests: JUnit4 + kotlinx-coroutines-test for JVM unit tests (`app/src/test`); Compose UI / Espresso
+  for instrumented tests (`app/src/androidTest`). Favor JVM unit tests for domain and framing logic.
 - Package root: `com.example.claudedesktopbuddy`.
 
 ## Build & test
@@ -130,7 +136,8 @@ trailer.)
 
 ## Permissions note
 
-Acting as a BLE peripheral on Android requires Bluetooth advertise/connect permissions
-(`BLUETOOTH_ADVERTISE`, `BLUETOOTH_CONNECT` on API 31+; legacy Bluetooth + location on older
-versions). These are not yet declared in `AndroidManifest.xml` — add them when the transport
-layer is implemented.
+Acting as a BLE peripheral needs `BLUETOOTH_ADVERTISE` and `BLUETOOTH_CONNECT` at runtime on
+Android 12 (API 31)+, and the install-time `BLUETOOTH` / `BLUETOOTH_ADMIN` on API 30 and below.
+Location is **not** required — the phone advertises rather than scans. These are declared in
+`AndroidManifest.xml`; the runtime permissions are requested from the composition lifecycle
+(`BleLifecycle` in `MainActivity`) before the transport starts.
