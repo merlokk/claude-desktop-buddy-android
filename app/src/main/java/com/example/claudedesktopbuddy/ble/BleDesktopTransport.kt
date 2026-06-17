@@ -1,6 +1,7 @@
 package com.example.claudedesktopbuddy.ble
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
@@ -15,8 +16,13 @@ import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.bluetooth.le.BluetoothLeAdvertiser
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelUuid
 import android.util.Log
 import com.example.claudedesktopbuddy.transport.DesktopTransport
@@ -64,6 +70,13 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
     @Volatile
     private var mtu = DEFAULT_MTU
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var advertising = false
+
+    /** The phone's Bluetooth name before we prefixed it with "Claude"; restored on [stop]. */
+    private var originalAdapterName: String? = null
+    private var nameChangeReceiver: BroadcastReceiver? = null
+
     // Notifications are dispatched one at a time, awaiting onNotificationSent between chunks.
     private val sendMutex = Mutex()
 
@@ -83,17 +96,78 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
             ?: run { Log.w(TAG, "Failed to open GATT server"); return }
         gattServer = server
         server.addService(buildService())
-        startAdvertising()
+        advertiseWithBuddyName(adapter)
         Log.i(TAG, "GATT server opened; advertising requested")
     }
 
     override fun stop() {
+        unregisterNameReceiver()
+        mainHandler.removeCallbacksAndMessages(null)
+        advertising = false
         advertiser?.stopAdvertising(advertiseCallback)
         advertiser = null
         gattServer?.close()
         gattServer = null
         txCharacteristic = null
         central = null
+        restoreAdapterName()
+    }
+
+    /**
+     * The desktop's device picker filters to advertised names starting with "Claude", so we prefix
+     * the phone's Bluetooth name. Android exposes no per-advertisement name, only the global adapter
+     * name, and setting it is asynchronous — so we wait for [BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED]
+     * (with a timeout fallback) before advertising, otherwise the packet would carry the old name.
+     */
+    private fun advertiseWithBuddyName(adapter: BluetoothAdapter) {
+        val current = adapter.name
+        when {
+            current == null -> advertiseOnce() // can't read the name; advertise as-is
+            current.startsWith("$BUDDY_NAME_PREFIX ") -> {
+                // A previous run left the prefixed name; remember the underlying one to restore later.
+                originalAdapterName = current.removePrefix("$BUDDY_NAME_PREFIX ")
+                advertiseOnce()
+            }
+            else -> {
+                originalAdapterName = current
+                waitForNameChangeThenAdvertise(adapter, target = "$BUDDY_NAME_PREFIX $current")
+                adapter.name = "$BUDDY_NAME_PREFIX $current"
+            }
+        }
+    }
+
+    private fun waitForNameChangeThenAdvertise(adapter: BluetoothAdapter, target: String) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (adapter.name == target) advertiseOnce()
+            }
+        }
+        nameChangeReceiver = receiver
+        appContext.registerReceiver(receiver, IntentFilter(BluetoothAdapter.ACTION_LOCAL_NAME_CHANGED))
+        mainHandler.postDelayed({ advertiseOnce() }, NAME_CHANGE_TIMEOUT_MS)
+    }
+
+    /** Starts advertising at most once per [start], whether triggered by the name change or timeout. */
+    private fun advertiseOnce() {
+        if (advertising || gattServer == null) return
+        advertising = true
+        unregisterNameReceiver()
+        mainHandler.removeCallbacksAndMessages(null)
+        startAdvertising()
+    }
+
+    private fun unregisterNameReceiver() {
+        nameChangeReceiver?.let { runCatching { appContext.unregisterReceiver(it) } }
+        nameChangeReceiver = null
+    }
+
+    private fun restoreAdapterName() {
+        val adapter = bluetoothManager?.adapter ?: return
+        originalAdapterName?.let {
+            adapter.name = it
+            Log.i(TAG, "Restored Bluetooth name")
+        }
+        originalAdapterName = null
     }
 
     override suspend fun send(line: String) {
@@ -263,6 +337,8 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
 
     private companion object {
         const val TAG = "BleDesktopTransport"
+        const val BUDDY_NAME_PREFIX = "Claude"
+        const val NAME_CHANGE_TIMEOUT_MS = 1_500L
         const val DEFAULT_MTU = 23
         const val ATT_HEADER_SIZE = 3 // ATT notification header (opcode + handle) consumes 3 bytes.
         const val MIN_CHUNK_SIZE = 20 // MTU 23 - 3.

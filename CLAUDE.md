@@ -93,6 +93,8 @@ protocol reference, with a link back to its source).
 - Heartbeat snapshot → buddy state, and permission decisions (`once` / `deny`).
 - `status` command → status ack with battery, uptime, device name, and approval/denial counts.
 - `name` (also updates the reported device name), `owner`, and `unpair` commands → simple acks.
+- BLE advertising with a `Claude`-prefixed device name (the phone's Bluetooth name is temporarily
+  prefixed while advertising) so the desktop's device picker lists the phone.
 
 ### Not yet implemented
 
@@ -105,9 +107,6 @@ These parts of the protocol are intentionally not built yet:
   `"sec": false`, the GATT characteristics are not marked encrypted-only, and `unpair` has no
   stored bonds to erase (it is still acked). Transcript snippets and tool-call hints therefore
   travel unencrypted.
-- **`Claude`-prefixed advertising name** — the desktop's device picker filters to names starting
-  with `Claude`. We advertise the service UUID plus the phone's Bluetooth name in the scan
-  response, which may not match that filter (needs checking on device).
 - **Turn events and time sync** — `{"evt":"turn",...}` and `{"time":[...]}` are parsed but not yet
   surfaced (no transcript view, no clock use).
 - **Status `stats` pet fields and battery current** — `vel` / `nap` / `lvl` are pet-specific and
