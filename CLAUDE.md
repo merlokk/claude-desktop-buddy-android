@@ -100,15 +100,16 @@ protocol reference, with a link back to its source).
 - Turn events → the latest turn (role + text) shown on the buddy screen.
 - Time sync → the desktop's UTC offset is shown as a time-zone line on the buddy screen.
 - Stale-connection detection → no inbound line for ~30s flips the buddy screen to "Disconnected".
+- Folder push → the desktop's folder-drop stream (`char_begin` / `file` / `chunk` / `file_end` /
+  `char_end`) is accepted: each file is persisted under app-private storage and every step is acked,
+  with `n` carrying the bytes written so far (`chunk`) and the final file size (`file_end`). File
+  paths that escape the pack directory (absolute, drive-lettered, or containing `..`) are rejected
+  with `ok:false`. We persist the bytes but do not render the pet/character the pack describes.
 
 ### Not yet implemented
 
 These parts of the protocol are intentionally not built yet:
 
-- **Folder push / character preview** (`char_begin` / `file` / `chunk` / `file_end` / `char_end`) —
-  the desktop's folder-drop streaming, and the device "preview" the desktop renders from the pushed
-  character pack. We don't accept it (the pet/character feature), so we never ack `char_begin` and
-  the desktop's preview stays blank. Unrelated to the buddy loop.
 - **Link encryption / bonding** — the link is unencrypted, so the status ack reports `"sec": false`
   and transcript snippets and tool-call hints travel in the clear. This was attempted (encrypted
   GATT permissions to force pairing) and reverted: as a peripheral, Android can't drive the
@@ -133,10 +134,12 @@ The code is organized by package (root `com.example.claudedesktopbuddy`):
   advertising, the GATT server, the RX/TX characteristics. The only place Android Bluetooth APIs
   are used.
 - **`buddy`** — the domain: `BuddyState` (what Claude is doing, the pending prompt), the
-  framework-free `BuddyViewModel` orchestration, and the thin Android `BuddyAndroidViewModel`
+  framework-free `BuddyViewModel` orchestration, the `CharacterPackReceiver` that drives the
+  folder-push stream into a `CharacterPackSink`, and the thin Android `BuddyAndroidViewModel`
   wrapper. Pure Kotlin apart from the wrapper; this is where most TDD happens.
-- **`device`** — `AndroidDeviceStatusProvider`, which reads battery/uptime/heap for the status ack
-  (Android APIs, behind the framework-free `DeviceStatusProvider` interface in `buddy`).
+- **`device`** — `AndroidDeviceStatusProvider`, which reads battery/uptime/heap for the status ack,
+  and `AndroidCharacterPackSink`, which persists a pushed folder to app storage (Android APIs,
+  behind the framework-free `DeviceStatusProvider` / `CharacterPackSink` interfaces in `buddy`).
 - **`log`** — `ExchangeLog`, the raw-traffic log model.
 - **`ui`** — the two Jetpack Compose screens. No protocol or Bluetooth logic here.
 

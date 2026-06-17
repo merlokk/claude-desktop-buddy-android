@@ -45,6 +45,29 @@ sealed interface InboundMessage {
         val text: String?,
     ) : InboundMessage
 
+    /**
+     * One step of the desktop's folder-push stream (a folder dropped on the Hardware Buddy window).
+     * The desktop sends these sequentially and waits for an ack before sending the next, so they are
+     * modelled as their own message family and handled by a [com.example.claudedesktopbuddy.buddy.CharacterPackReceiver].
+     */
+    sealed interface FolderPush : InboundMessage {
+
+        /** Start of a pushed pack: [name] is the folder/pack name, [totalBytes] its declared size. */
+        data class CharBegin(val name: String, val totalBytes: Long) : FolderPush
+
+        /** Start of one file within the pack: its relative [path] and declared [sizeBytes]. */
+        data class FileBegin(val path: String, val sizeBytes: Long) : FolderPush
+
+        /** A base64-encoded slice of the current file's bytes. */
+        data class Chunk(val dataBase64: String) : FolderPush
+
+        /** End of the current file. */
+        data object FileEnd : FolderPush
+
+        /** End of the pack. */
+        data object CharEnd : FolderPush
+    }
+
     /** A valid JSON object we recognise but do not model; [raw] is the original line. */
     data class Unknown(val raw: String) : InboundMessage
 }

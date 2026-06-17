@@ -18,13 +18,16 @@ sealed interface OutboundMessage {
     ) : OutboundMessage
 
     /**
-     * Acknowledges a [InboundMessage.Command] received from the desktop. On failure, [error]
-     * carries a short human-readable reason.
+     * Acknowledges a `cmd` received from the desktop. On failure, [error] carries a short
+     * human-readable reason. [bytes] is the protocol's generic `n` counter — the bytes written so
+     * far for a `chunk` ack and the final file size for a `file_end` ack; left null (and omitted on
+     * the wire) for acks that carry no count.
      */
     data class CommandAck(
         val command: String,
         val ok: Boolean,
         val error: String? = null,
+        val bytes: Long? = null,
     ) : OutboundMessage
 
     /**

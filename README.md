@@ -14,6 +14,8 @@ the Nordic UART Service, so from the desktop's point of view it is just another 
   the question (the tool being requested plus a hint) with **Approve** / **Deny** buttons.
 - **Logs screen** — the raw line-by-line JSON exchanged with the desktop. Toggleable, and **off by
   default**.
+- **Folder push** — folders dropped on the desktop's Hardware Buddy window are received and saved to
+  the app's private storage (the bytes are persisted; the pet/character they describe isn't rendered).
 
 ## Requirements
 
@@ -86,10 +88,10 @@ verified on a device rather than by unit tests.
 app/src/main/java/com/example/claudedesktopbuddy/
   protocol/    Wire protocol: parsing inbound messages, serializing outbound ones
   transport/   DesktopTransport interface + line framing (\n) — Bluetooth-free
-  buddy/       BuddyState (domain) + BuddyViewModel orchestration + Android ViewModel wrapper
+  buddy/       BuddyState (domain) + BuddyViewModel orchestration + folder-push receiver + ViewModel wrapper
   log/         ExchangeLog — the raw-traffic log model
   ble/         BleDesktopTransport — the real BLE peripheral (Nordic UART GATT server)
-  device/      AndroidDeviceStatusProvider — battery/uptime/heap for the status ack
+  device/      Android status provider (battery/uptime/heap) + folder-push file sink
   ui/          Compose screens (BuddyScreen, LogsScreen)
 ```
 

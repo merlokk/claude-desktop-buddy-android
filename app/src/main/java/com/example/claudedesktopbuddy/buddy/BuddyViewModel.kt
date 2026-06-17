@@ -35,7 +35,10 @@ class BuddyViewModel(
     private val transport: DesktopTransport,
     private val scope: CoroutineScope,
     private val statusProvider: DeviceStatusProvider = DeviceStatusProvider.Empty,
+    packSink: CharacterPackSink = CharacterPackSink.NoOp,
 ) {
+
+    private val packReceiver = CharacterPackReceiver(packSink)
 
     private val _state = MutableStateFlow(BuddyState())
 
@@ -65,8 +68,10 @@ class BuddyViewModel(
             return // Malformed line: already captured raw in the log, nothing to fold in.
         }
         _state.update { it.reduce(message) }
-        if (message is InboundMessage.Command) {
-            handleCommand(message)
+        when (message) {
+            is InboundMessage.Command -> handleCommand(message)
+            is InboundMessage.FolderPush -> send(ProtocolSerializer.encode(packReceiver.handle(message)))
+            else -> {} // Snapshots, turn events, time sync, and unknown lines need no reply.
         }
     }
 

@@ -23,6 +23,7 @@ object ProtocolSerializer {
         is OutboundMessage.CommandAck -> buildJsonObject {
             put("ack", message.command)
             put("ok", message.ok)
+            message.bytes?.let { put("n", it) }
             message.error?.let { put("error", it) }
         }
 

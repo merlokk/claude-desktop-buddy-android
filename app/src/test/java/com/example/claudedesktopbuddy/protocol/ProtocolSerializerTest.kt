@@ -52,6 +52,25 @@ class ProtocolSerializerTest {
     }
 
     @Test
+    fun `encodes a chunk ack with the bytes-written counter as n`() {
+        val line = ProtocolSerializer.encode(
+            OutboundMessage.CommandAck(command = "chunk", ok = true, bytes = 412),
+        )
+
+        assertEquals("""{"ack":"chunk","ok":true,"n":412}""", line)
+    }
+
+    @Test
+    fun `an ack without a byte count omits n`() {
+        val line = ProtocolSerializer.encode(
+            OutboundMessage.CommandAck(command = "char_begin", ok = true),
+        )
+
+        assertEquals("""{"ack":"char_begin","ok":true}""", line)
+        assertFalse(line.contains("\"n\""))
+    }
+
+    @Test
     fun `output is a single line with no trailing newline`() {
         val line = ProtocolSerializer.encode(
             OutboundMessage.PermissionDecision(promptId = "req_1", choice = PermissionChoice.APPROVE),

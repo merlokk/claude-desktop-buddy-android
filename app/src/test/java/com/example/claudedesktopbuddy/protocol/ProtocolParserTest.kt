@@ -110,6 +110,33 @@ class ProtocolParserTest {
     }
 
     @Test
+    fun `parses char_begin into a folder-push CharBegin`() {
+        val message = ProtocolParser.parse("""{"cmd":"char_begin","name":"bufo","total":184320}""")
+
+        assertEquals(InboundMessage.FolderPush.CharBegin(name = "bufo", totalBytes = 184320), message)
+    }
+
+    @Test
+    fun `parses file into a folder-push FileBegin`() {
+        val message = ProtocolParser.parse("""{"cmd":"file","path":"manifest.json","size":412}""")
+
+        assertEquals(InboundMessage.FolderPush.FileBegin(path = "manifest.json", sizeBytes = 412), message)
+    }
+
+    @Test
+    fun `parses chunk into a folder-push Chunk`() {
+        val message = ProtocolParser.parse("""{"cmd":"chunk","d":"aGVsbG8="}""")
+
+        assertEquals(InboundMessage.FolderPush.Chunk(dataBase64 = "aGVsbG8="), message)
+    }
+
+    @Test
+    fun `parses file_end and char_end into their folder-push steps`() {
+        assertEquals(InboundMessage.FolderPush.FileEnd, ProtocolParser.parse("""{"cmd":"file_end"}"""))
+        assertEquals(InboundMessage.FolderPush.CharEnd, ProtocolParser.parse("""{"cmd":"char_end"}"""))
+    }
+
+    @Test
     fun `valid json that is not modelled becomes Unknown`() {
         val line = """{"foo":"bar"}"""
 

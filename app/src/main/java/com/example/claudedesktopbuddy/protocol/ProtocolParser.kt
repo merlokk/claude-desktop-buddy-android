@@ -17,9 +17,10 @@ class ProtocolParseException(message: String, cause: Throwable? = null) : Except
  * [InboundMessage]. Framing (splitting on `\n`) is the transport's responsibility; this parser
  * only sees one complete line at a time.
  *
- * The concrete type is chosen by which keys are present, in priority order: `cmd` -> [Command],
- * `evt` -> [TurnEvent], `time` -> [TimeSync], otherwise a snapshot. A valid JSON object that fits
- * none of these becomes [Unknown] so the logs screen can still display it.
+ * The concrete type is chosen by which keys are present, in priority order: `cmd` -> a [Command] or
+ * a [FolderPush] step (decided by the verb), `evt` -> [TurnEvent], `time` -> [TimeSync], otherwise a
+ * snapshot. A valid JSON object that fits none of these becomes [Unknown] so the logs screen can
+ * still display it.
  */
 object ProtocolParser {
 
@@ -68,11 +69,17 @@ object ProtocolParser {
             hint = prompt.string("hint"),
         )
 
-    private fun parseCommand(root: JsonObject): InboundMessage.Command =
-        InboundMessage.Command(
-            verb = root.string("cmd").orEmpty(),
-            argument = root.string("name"),
-        )
+    private fun parseCommand(root: JsonObject): InboundMessage = when (val verb = root.string("cmd").orEmpty()) {
+        CommandVerbs.CHAR_BEGIN ->
+            InboundMessage.FolderPush.CharBegin(name = root.string("name").orEmpty(), totalBytes = root.long("total"))
+        CommandVerbs.FILE ->
+            InboundMessage.FolderPush.FileBegin(path = root.string("path").orEmpty(), sizeBytes = root.long("size"))
+        CommandVerbs.CHUNK ->
+            InboundMessage.FolderPush.Chunk(dataBase64 = root.string("d").orEmpty())
+        CommandVerbs.FILE_END -> InboundMessage.FolderPush.FileEnd
+        CommandVerbs.CHAR_END -> InboundMessage.FolderPush.CharEnd
+        else -> InboundMessage.Command(verb = verb, argument = root.string("name"))
+    }
 
     private fun parseTimeSync(root: JsonObject): InboundMessage.TimeSync {
         val time = root["time"] as? JsonArray

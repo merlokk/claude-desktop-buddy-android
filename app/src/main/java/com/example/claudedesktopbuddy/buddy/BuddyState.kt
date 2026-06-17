@@ -80,6 +80,9 @@ data class BuddyState(
 
         is InboundMessage.TimeSync -> copy(desktopUtcOffsetSeconds = message.utcOffsetSeconds)
 
+        // Folder push is a side-stream handled by CharacterPackReceiver; it carries no buddy state.
+        is InboundMessage.FolderPush -> this
+
         is InboundMessage.Unknown -> this
     }
 

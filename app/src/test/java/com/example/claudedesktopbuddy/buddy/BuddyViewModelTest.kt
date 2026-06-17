@@ -305,6 +305,42 @@ class BuddyViewModelTest {
     }
 
     @Test
+    fun `a folder push is acknowledged step by step`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+
+        // "hi" -> base64 "aGk=", two bytes.
+        transport.emit("""{"cmd":"char_begin","name":"bufo","total":2}""")
+        transport.emit("""{"cmd":"file","path":"a.txt","size":2}""")
+        transport.emit("""{"cmd":"chunk","d":"aGk="}""")
+        transport.emit("""{"cmd":"file_end"}""")
+        transport.emit("""{"cmd":"char_end"}""")
+
+        assertEquals(
+            listOf(
+                """{"ack":"char_begin","ok":true}""",
+                """{"ack":"file","ok":true}""",
+                """{"ack":"chunk","ok":true,"n":2}""",
+                """{"ack":"file_end","ok":true,"n":2}""",
+                """{"ack":"char_end","ok":true}""",
+            ),
+            transport.sent,
+        )
+    }
+
+    @Test
+    fun `a folder push leaves the buddy state untouched`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+        transport.emit(snapshotBusy)
+
+        transport.emit("""{"cmd":"char_begin","name":"bufo","total":2}""")
+
+        assertEquals(BuddyActivity.BUSY, vm.state.value.activity)
+        assertEquals("thinking", vm.state.value.statusMessage)
+    }
+
+    @Test
     fun `clearLog drops recorded entries`() = runTest {
         val transport = FakeDesktopTransport()
         val vm = newViewModel(transport)
