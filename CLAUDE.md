@@ -91,8 +91,10 @@ protocol reference, with a link back to its source).
 ### Implemented
 
 - Heartbeat snapshot → buddy state, and permission decisions (`once` / `deny`).
-- `status` command → status ack with battery, uptime, device name, and approval/denial counts.
-- `name` (also updates the reported device name), `owner`, and `unpair` commands → simple acks.
+- `status` command → status ack with the complete `data` set (battery incl. current, uptime, free
+  heap, device name, link security, and stats). The desktop's status panel needs the full set, or
+  it shows "No response".
+- `name` (sets the reported device name), `owner` (shown on the buddy screen), and `unpair` → acks.
 - BLE advertising with a `Claude`-prefixed device name (the phone's Bluetooth name is temporarily
   prefixed while advertising) so the desktop's device picker lists the phone.
 - Turn events → the latest turn (role + text) shown on the buddy screen.
@@ -103,9 +105,10 @@ protocol reference, with a link back to its source).
 
 These parts of the protocol are intentionally not built yet:
 
-- **Folder push** (`char_begin` / `file` / `chunk` / `file_end` / `char_end`) — the folder-drop
-  streaming. We don't ack `char_begin`, so the desktop times out and reports it failed. This goes
-  with not porting the pet/character features.
+- **Folder push / character preview** (`char_begin` / `file` / `chunk` / `file_end` / `char_end`) —
+  the desktop's folder-drop streaming, and the device "preview" the desktop renders from the pushed
+  character pack. We don't accept it (the pet/character feature), so we never ack `char_begin` and
+  the desktop's preview stays blank. Unrelated to the buddy loop.
 - **Link encryption / bonding** — the link is unencrypted, so the status ack reports `"sec": false`
   and transcript snippets and tool-call hints travel in the clear. This was attempted (encrypted
   GATT permissions to force pairing) and reverted: as a peripheral, Android can't drive the
@@ -114,11 +117,6 @@ These parts of the protocol are intentionally not built yet:
   16, so bonds desync the moment the desktop "Forget"s and reconnects fail with
   `HCI_ERR_AUTH_FAILURE`. The `sec` flag and the `unpair` hook stay plumbed (transport
   `isLinkSecure` / `unpair`) with safe defaults, ready if a viable approach appears.
-- **Folder push / character preview** — the desktop's device preview is rendered from a character
-  pack pushed over folder push, which we don't accept (the pet feature), so the preview stays blank.
-  Note: the status ack must include the full `data` field set — `bat.mA` and the pet `stats`
-  (`vel`/`nap`/`lvl`, reported as 0) — or the desktop's status panel shows "No response"; these are
-  now sent.
 
 ## Architecture
 
@@ -137,6 +135,8 @@ The code is organized by package (root `com.example.claudedesktopbuddy`):
 - **`buddy`** — the domain: `BuddyState` (what Claude is doing, the pending prompt), the
   framework-free `BuddyViewModel` orchestration, and the thin Android `BuddyAndroidViewModel`
   wrapper. Pure Kotlin apart from the wrapper; this is where most TDD happens.
+- **`device`** — `AndroidDeviceStatusProvider`, which reads battery/uptime/heap for the status ack
+  (Android APIs, behind the framework-free `DeviceStatusProvider` interface in `buddy`).
 - **`log`** — `ExchangeLog`, the raw-traffic log model.
 - **`ui`** — the two Jetpack Compose screens. No protocol or Bluetooth logic here.
 

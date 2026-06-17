@@ -89,6 +89,7 @@ app/src/main/java/com/example/claudedesktopbuddy/
   buddy/       BuddyState (domain) + BuddyViewModel orchestration + Android ViewModel wrapper
   log/         ExchangeLog — the raw-traffic log model
   ble/         BleDesktopTransport — the real BLE peripheral (Nordic UART GATT server)
+  device/      AndroidDeviceStatusProvider — battery/uptime/heap for the status ack
   ui/          Compose screens (BuddyScreen, LogsScreen)
 ```
 
