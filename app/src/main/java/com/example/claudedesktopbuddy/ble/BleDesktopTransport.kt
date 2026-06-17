@@ -18,6 +18,7 @@ import android.bluetooth.le.BluetoothLeAdvertiser
 import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
+import android.util.Log
 import com.example.claudedesktopbuddy.transport.DesktopTransport
 import com.example.claudedesktopbuddy.transport.encodeLine
 import com.example.claudedesktopbuddy.transport.LineAssembler
@@ -71,14 +72,19 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
 
     override fun start() {
         if (gattServer != null) return // already running
-        val manager = bluetoothManager ?: return
-        val adapter = manager.adapter ?: return
-        if (!adapter.isEnabled) return
+        val manager = bluetoothManager ?: run { Log.w(TAG, "No BluetoothManager"); return }
+        val adapter = manager.adapter ?: run { Log.w(TAG, "No Bluetooth adapter"); return }
+        if (!adapter.isEnabled) {
+            Log.w(TAG, "Bluetooth is disabled")
+            return
+        }
 
-        val server = manager.openGattServer(appContext, serverCallback) ?: return
+        val server = manager.openGattServer(appContext, serverCallback)
+            ?: run { Log.w(TAG, "Failed to open GATT server"); return }
         gattServer = server
         server.addService(buildService())
         startAdvertising()
+        Log.i(TAG, "GATT server opened; advertising requested")
     }
 
     override fun stop() {
@@ -188,8 +194,14 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
 
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             when (newState) {
-                BluetoothProfile.STATE_CONNECTED -> central = device
-                BluetoothProfile.STATE_DISCONNECTED -> if (device == central) central = null
+                BluetoothProfile.STATE_CONNECTED -> {
+                    central = device
+                    Log.i(TAG, "Central connected: ${device.address}")
+                }
+                BluetoothProfile.STATE_DISCONNECTED -> {
+                    if (device == central) central = null
+                    Log.i(TAG, "Central disconnected: ${device.address}")
+                }
             }
         }
 
@@ -222,6 +234,7 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
             // The central subscribing to TX notifications identifies the desktop we notify.
             if (descriptor.uuid == NordicUart.CCCD) {
                 central = device
+                Log.i(TAG, "Central subscribed to TX notifications: ${device.address}")
             }
             if (responseNeeded) {
                 gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
@@ -234,14 +247,22 @@ class BleDesktopTransport(context: Context) : DesktopTransport {
 
         override fun onMtuChanged(device: BluetoothDevice, mtu: Int) {
             this@BleDesktopTransport.mtu = mtu
+            Log.i(TAG, "MTU changed: $mtu")
         }
     }
 
     private val advertiseCallback = object : AdvertiseCallback() {
-        // Advertising start/failure is observed via logcat; no app state depends on it yet.
+        override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
+            Log.i(TAG, "Advertising started")
+        }
+
+        override fun onStartFailure(errorCode: Int) {
+            Log.w(TAG, "Advertising failed to start: error code $errorCode")
+        }
     }
 
     private companion object {
+        const val TAG = "BleDesktopTransport"
         const val DEFAULT_MTU = 23
         const val ATT_HEADER_SIZE = 3 // ATT notification header (opcode + handle) consumes 3 bytes.
         const val MIN_CHUNK_SIZE = 20 // MTU 23 - 3.
