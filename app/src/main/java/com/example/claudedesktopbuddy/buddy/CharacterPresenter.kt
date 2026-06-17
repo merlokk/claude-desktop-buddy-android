@@ -38,6 +38,13 @@ object CharacterPresenter {
     }
 
     /**
+     * As [stateFor], but a transient [celebrating] flag (set briefly after the user approves a
+     * prompt) overrides everything with the [CharacterState.HEART] flourish.
+     */
+    fun stateFor(state: BuddyState, celebrating: Boolean): CharacterState =
+        if (celebrating) CharacterState.HEART else stateFor(state)
+
+    /**
      * The GIF filenames to play for [state], falling back to the `idle` frames when the pack defines
      * no animation for that state, and to empty when it defines neither.
      */

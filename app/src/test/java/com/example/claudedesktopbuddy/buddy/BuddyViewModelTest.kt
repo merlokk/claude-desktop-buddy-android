@@ -153,6 +153,30 @@ class BuddyViewModelTest {
     }
 
     @Test
+    fun `approving lights the heart briefly then clears it`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+        transport.emit(snapshotWithPrompt)
+
+        vm.approve()
+        assertEquals(true, vm.heartActive.value)
+
+        advanceTimeBy(3_500)
+        assertEquals(false, vm.heartActive.value)
+    }
+
+    @Test
+    fun `denying does not light the heart`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+        transport.emit(snapshotWithPrompt)
+
+        vm.deny()
+
+        assertEquals(false, vm.heartActive.value)
+    }
+
+    @Test
     fun `deny sends a deny decision`() = runTest {
         val transport = FakeDesktopTransport()
         val vm = newViewModel(transport)

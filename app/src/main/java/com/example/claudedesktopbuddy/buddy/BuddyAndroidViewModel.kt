@@ -34,6 +34,7 @@ class BuddyAndroidViewModel(
     val state = delegate.state
     val log = delegate.log
     val characterPack = delegate.characterPack
+    val heartActive = delegate.heartActive
 
     fun approve() = delegate.approve()
     fun deny() = delegate.deny()

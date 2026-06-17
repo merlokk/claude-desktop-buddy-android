@@ -50,6 +50,14 @@ class CharacterPresenterTest {
         )
     }
 
+    @Test
+    fun `celebrating overrides the state with heart`() {
+        val busy = BuddyState(isConnected = true, running = 1)
+
+        assertEquals(CharacterState.HEART, CharacterPresenter.stateFor(busy, celebrating = true))
+        assertEquals(CharacterState.BUSY, CharacterPresenter.stateFor(busy, celebrating = false))
+    }
+
     private val manifest = CharacterManifest(
         name = "bufo",
         colors = null,

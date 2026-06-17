@@ -28,15 +28,21 @@ import kotlinx.coroutines.delay
 
 /**
  * Renders the pushed character pack as an animated avatar. The animation tracks the buddy state
- * (sleep / idle / busy / attention); when a state lists several GIFs, they rotate as a carousel.
+ * (sleep / idle / busy / attention), with a brief `heart` flourish after an approval ([heartActive]);
+ * when a state lists several GIFs, they rotate as a carousel.
  *
  * The pack's GIFs are decoded by a Coil [ImageLoader] with the animated-image decoder. Nothing is
  * shown when the current (or fallback) state has no frames — the host only places this when a pack
  * exists, so a missing frame just yields an empty corner.
  */
 @Composable
-fun AvatarView(pack: CharacterPack, state: BuddyState, modifier: Modifier = Modifier) {
-    val characterState = CharacterPresenter.stateFor(state)
+fun AvatarView(
+    pack: CharacterPack,
+    state: BuddyState,
+    modifier: Modifier = Modifier,
+    heartActive: Boolean = false,
+) {
+    val characterState = CharacterPresenter.stateFor(state, celebrating = heartActive)
     val frames = remember(pack, characterState) {
         CharacterPresenter.framesFor(pack.manifest, characterState)
     }

@@ -40,6 +40,7 @@ fun BuddyScreen(
     onApprove: () -> Unit,
     onDeny: () -> Unit,
     modifier: Modifier = Modifier,
+    heartActive: Boolean = false,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         BuddyContent(state = state, onApprove = onApprove, onDeny = onDeny)
@@ -47,6 +48,7 @@ fun BuddyScreen(
             AvatarView(
                 pack = characterPack,
                 state = state,
+                heartActive = heartActive,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(12.dp),

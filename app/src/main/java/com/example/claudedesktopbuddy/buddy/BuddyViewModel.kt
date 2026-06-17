@@ -56,8 +56,16 @@ class BuddyViewModel(
     /** Raw exchange log for the logs screen (disabled by default). */
     val log: StateFlow<ExchangeLog> = _log.asStateFlow()
 
+    private val _heartActive = MutableStateFlow(false)
+
+    /** True briefly after the user approves a prompt, so the avatar can show its `heart` flourish. */
+    val heartActive: StateFlow<Boolean> = _heartActive.asStateFlow()
+
     // Restarted on every inbound line; if it ever elapses, the desktop has gone silent.
     private var staleJob: Job? = null
+
+    // Holds the heart flourish for a moment after an approval.
+    private var heartJob: Job? = null
 
     init {
         scope.launch {
@@ -124,6 +132,17 @@ class BuddyViewModel(
         val answer = _state.value.answer(choice) ?: return
         _state.value = answer.state
         send(ProtocolSerializer.encode(answer.decision))
+        if (choice == PermissionChoice.APPROVE) celebrateApproval()
+    }
+
+    /** Flips [heartActive] on for [HEART_DURATION_MS], restarting the timer on a rapid re-approval. */
+    private fun celebrateApproval() {
+        heartJob?.cancel()
+        heartJob = scope.launch {
+            _heartActive.value = true
+            delay(HEART_DURATION_MS)
+            _heartActive.value = false
+        }
     }
 
     /**
@@ -158,3 +177,6 @@ class BuddyViewModel(
 
 /** No keepalive/snapshot for this long means the desktop has gone silent (it sends one every ~10s). */
 private const val STALE_TIMEOUT_MS = 30_000L
+
+/** How long the avatar shows its `heart` flourish after an approval. */
+private const val HEART_DURATION_MS = 3_000L

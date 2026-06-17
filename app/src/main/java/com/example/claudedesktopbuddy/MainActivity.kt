@@ -51,6 +51,7 @@ fun ClaudeDesktopBuddyApp(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val log by viewModel.log.collectAsStateWithLifecycle()
     val characterPack by viewModel.characterPack.collectAsStateWithLifecycle()
+    val heartActive by viewModel.heartActive.collectAsStateWithLifecycle()
 
     BleLifecycle(
         onStart = viewModel::startTransport,
@@ -78,6 +79,7 @@ fun ClaudeDesktopBuddyApp(
                     characterPack = characterPack,
                     onApprove = viewModel::approve,
                     onDeny = viewModel::deny,
+                    heartActive = heartActive,
                     modifier = Modifier.padding(innerPadding),
                 )
 
