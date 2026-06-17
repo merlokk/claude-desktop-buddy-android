@@ -1,6 +1,7 @@
 package com.example.claudedesktopbuddy.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,23 +23,46 @@ import androidx.compose.ui.unit.dp
 import com.example.claudedesktopbuddy.R
 import com.example.claudedesktopbuddy.buddy.BuddyActivity
 import com.example.claudedesktopbuddy.buddy.BuddyState
+import com.example.claudedesktopbuddy.buddy.CharacterPack
 import com.example.claudedesktopbuddy.buddy.Turn
 import com.example.claudedesktopbuddy.protocol.PermissionPrompt
 import com.example.claudedesktopbuddy.ui.theme.ClaudeDesktopBuddyTheme
 
 /**
  * The home screen: shows what Claude is doing and, when a prompt is pending, the question plus
- * approve/deny buttons. Stateless — the host collects [state] and supplies the callbacks.
+ * approve/deny buttons. When a character pack has been pushed, its animated avatar sits in the
+ * top-left corner. Stateless — the host collects [state] / [characterPack] and supplies the callbacks.
  */
 @Composable
 fun BuddyScreen(
     state: BuddyState,
+    characterPack: CharacterPack?,
     onApprove: () -> Unit,
     onDeny: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        BuddyContent(state = state, onApprove = onApprove, onDeny = onDeny)
+        if (characterPack != null) {
+            AvatarView(
+                pack = characterPack,
+                state = state,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(12.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun BuddyContent(
+    state: BuddyState,
+    onApprove: () -> Unit,
+    onDeny: () -> Unit,
+) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -188,6 +212,7 @@ private fun BuddyScreenBusyPreview() {
                 desktopUtcOffsetSeconds = -25200,
                 isConnected = true,
             ),
+            characterPack = null,
             onApprove = {},
             onDeny = {},
         )
@@ -205,6 +230,7 @@ private fun BuddyScreenPromptPreview() {
                 pendingPrompt = PermissionPrompt(id = "req_1", tool = "Bash", hint = "rm -rf /tmp/foo"),
                 isConnected = true,
             ),
+            characterPack = null,
             onApprove = {},
             onDeny = {},
         )

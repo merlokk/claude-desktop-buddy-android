@@ -50,6 +50,7 @@ fun ClaudeDesktopBuddyApp(
     var current by rememberSaveable { mutableStateOf(AppDestination.BUDDY) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val log by viewModel.log.collectAsStateWithLifecycle()
+    val characterPack by viewModel.characterPack.collectAsStateWithLifecycle()
 
     BleLifecycle(
         onStart = viewModel::startTransport,
@@ -74,6 +75,7 @@ fun ClaudeDesktopBuddyApp(
             when (current) {
                 AppDestination.BUDDY -> BuddyScreen(
                     state = state,
+                    characterPack = characterPack,
                     onApprove = viewModel::approve,
                     onDeny = viewModel::deny,
                     modifier = Modifier.padding(innerPadding),
