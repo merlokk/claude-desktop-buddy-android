@@ -3,6 +3,7 @@ package com.example.claudedesktopbuddy.buddy
 import com.example.claudedesktopbuddy.log.ExchangeLog
 import com.example.claudedesktopbuddy.log.LogDirection
 import com.example.claudedesktopbuddy.protocol.BuddyStats
+import com.example.claudedesktopbuddy.protocol.CommandVerbs
 import com.example.claudedesktopbuddy.protocol.InboundMessage
 import com.example.claudedesktopbuddy.protocol.OutboundMessage
 import com.example.claudedesktopbuddy.protocol.PermissionChoice
@@ -58,15 +59,30 @@ class BuddyViewModel(
             return // Malformed line: already captured raw in the log, nothing to fold in.
         }
         _state.update { it.reduce(message) }
-        if (message is InboundMessage.Command && message.verb == STATUS_COMMAND) {
-            sendStatusAck()
+        if (message is InboundMessage.Command) {
+            handleCommand(message)
         }
+    }
+
+    /** Acknowledges the commands the desktop expects a reply to. Unknown commands are ignored. */
+    private fun handleCommand(command: InboundMessage.Command) {
+        when (command.verb) {
+            CommandVerbs.STATUS -> sendStatusAck()
+            CommandVerbs.NAME, CommandVerbs.OWNER, CommandVerbs.UNPAIR -> sendAck(command.verb)
+        }
+    }
+
+    private fun sendAck(command: String) {
+        send(ProtocolSerializer.encode(OutboundMessage.CommandAck(command = command, ok = true)))
     }
 
     private fun sendStatusAck() {
         val current = _state.value
-        val status = statusProvider.status()
-            .copy(stats = BuddyStats(approvals = current.approvals, denials = current.denials))
+        val base = statusProvider.status()
+        val status = base.copy(
+            name = current.deviceName ?: base.name,
+            stats = BuddyStats(approvals = current.approvals, denials = current.denials),
+        )
         send(ProtocolSerializer.encode(OutboundMessage.StatusAck(status)))
     }
 
@@ -97,5 +113,3 @@ class BuddyViewModel(
         _log.update { it.cleared() }
     }
 }
-
-private const val STATUS_COMMAND = "status"

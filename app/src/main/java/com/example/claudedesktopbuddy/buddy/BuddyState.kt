@@ -1,5 +1,6 @@
 package com.example.claudedesktopbuddy.buddy
 
+import com.example.claudedesktopbuddy.protocol.CommandVerbs
 import com.example.claudedesktopbuddy.protocol.InboundMessage
 import com.example.claudedesktopbuddy.protocol.OutboundMessage
 import com.example.claudedesktopbuddy.protocol.PermissionChoice
@@ -36,6 +37,7 @@ data class BuddyState(
     val pendingPrompt: PermissionPrompt? = null,
     val approvals: Int = 0,
     val denials: Int = 0,
+    val deviceName: String? = null,
 ) {
 
     val activity: BuddyActivity
@@ -61,8 +63,10 @@ data class BuddyState(
             pendingPrompt = message.prompt,
         )
 
+        is InboundMessage.Command ->
+            if (message.verb == CommandVerbs.NAME) copy(deviceName = message.argument) else this
+
         is InboundMessage.TimeSync,
-        is InboundMessage.Command,
         is InboundMessage.TurnEvent,
         is InboundMessage.Unknown,
         -> this

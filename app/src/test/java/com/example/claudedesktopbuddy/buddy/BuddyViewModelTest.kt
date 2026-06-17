@@ -203,6 +203,40 @@ class BuddyViewModelTest {
     }
 
     @Test
+    fun `name owner and unpair commands are acknowledged`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+
+        transport.emit("""{"cmd":"name","name":"Clawd"}""")
+        transport.emit("""{"cmd":"owner","name":"Felix"}""")
+        transport.emit("""{"cmd":"unpair"}""")
+
+        assertEquals(
+            listOf(
+                """{"ack":"name","ok":true}""",
+                """{"ack":"owner","ok":true}""",
+                """{"ack":"unpair","ok":true}""",
+            ),
+            transport.sent,
+        )
+    }
+
+    @Test
+    fun `a name command overrides the device name in the status ack`() = runTest {
+        val transport = FakeDesktopTransport()
+        val provider = DeviceStatusProvider { DeviceStatus(name = "Pixel") }
+        val vm = newViewModel(transport, provider)
+
+        transport.emit("""{"cmd":"name","name":"Clawd"}""")
+        transport.emit("""{"cmd":"status"}""")
+
+        assertEquals(
+            """{"ack":"status","ok":true,"data":{"name":"Clawd","stats":{"appr":0,"deny":0}}}""",
+            transport.sent.last(),
+        )
+    }
+
+    @Test
     fun `clearLog drops recorded entries`() = runTest {
         val transport = FakeDesktopTransport()
         val vm = newViewModel(transport)

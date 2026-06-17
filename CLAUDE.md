@@ -88,6 +88,32 @@ are also sent on TX.
 See [`docs/REFERENCE.md`](docs/REFERENCE.md) for the full message catalog (a copy of the upstream
 protocol reference, with a link back to its source).
 
+### Implemented
+
+- Heartbeat snapshot → buddy state, and permission decisions (`once` / `deny`).
+- `status` command → status ack with battery, uptime, device name, and approval/denial counts.
+- `name` (also updates the reported device name), `owner`, and `unpair` commands → simple acks.
+
+### Not yet implemented
+
+These parts of the protocol are intentionally not built yet:
+
+- **Folder push** (`char_begin` / `file` / `chunk` / `file_end` / `char_end`) — the folder-drop
+  streaming. We don't ack `char_begin`, so the desktop times out and reports it failed. This goes
+  with not porting the pet/character features.
+- **Link encryption / bonding** — no LE Secure Connections pairing. The status ack reports
+  `"sec": false`, the GATT characteristics are not marked encrypted-only, and `unpair` has no
+  stored bonds to erase (it is still acked). Transcript snippets and tool-call hints therefore
+  travel unencrypted.
+- **`Claude`-prefixed advertising name** — the desktop's device picker filters to names starting
+  with `Claude`. We advertise the service UUID plus the phone's Bluetooth name in the scan
+  response, which may not match that filter (needs checking on device).
+- **Turn events and time sync** — `{"evt":"turn",...}` and `{"time":[...]}` are parsed but not yet
+  surfaced (no transcript view, no clock use).
+- **Status `stats` pet fields and battery current** — `vel` / `nap` / `lvl` are pet-specific and
+  omitted; battery `mA` is omitted because its sign and units are device-dependent on Android.
+- **Stale-connection detection** — the "no snapshot for ~30s means dead" timeout is not enforced.
+
 ## Architecture
 
 Dependencies point inward: UI → domain → the transport interface, and the BLE implementation

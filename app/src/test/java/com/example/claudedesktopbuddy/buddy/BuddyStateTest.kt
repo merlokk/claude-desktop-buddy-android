@@ -94,8 +94,17 @@ class BuddyStateTest {
 
         assertEquals(base, base.reduce(InboundMessage.TimeSync(epochSeconds = 1, utcOffsetSeconds = 0)))
         assertEquals(base, base.reduce(InboundMessage.Command(verb = "status", argument = null)))
+        assertEquals(base, base.reduce(InboundMessage.Command(verb = "owner", argument = "Felix")))
+        assertEquals(base, base.reduce(InboundMessage.Command(verb = "unpair", argument = null)))
         assertEquals(base, base.reduce(InboundMessage.TurnEvent(role = "assistant", text = "hi")))
         assertEquals(base, base.reduce(InboundMessage.Unknown(raw = "{}")))
+    }
+
+    @Test
+    fun `a name command sets the device name`() {
+        val state = BuddyState().reduce(InboundMessage.Command(verb = "name", argument = "Clawd"))
+
+        assertEquals("Clawd", state.deviceName)
     }
 
     @Test
