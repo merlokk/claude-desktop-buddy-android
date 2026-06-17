@@ -93,9 +93,15 @@ class BuddyStateTest {
         val base = BuddyState().reduce(snapshot(running = 1, message = "busy"))
 
         assertEquals(base, base.reduce(InboundMessage.Command(verb = "status", argument = null)))
-        assertEquals(base, base.reduce(InboundMessage.Command(verb = "owner", argument = "Felix")))
         assertEquals(base, base.reduce(InboundMessage.Command(verb = "unpair", argument = null)))
         assertEquals(base, base.reduce(InboundMessage.Unknown(raw = "{}")))
+    }
+
+    @Test
+    fun `an owner command records the owner name`() {
+        val state = BuddyState().reduce(InboundMessage.Command(verb = "owner", argument = "Felix"))
+
+        assertEquals("Felix", state.ownerName)
     }
 
     @Test

@@ -38,6 +38,7 @@ data class BuddyState(
     val approvals: Int = 0,
     val denials: Int = 0,
     val deviceName: String? = null,
+    val ownerName: String? = null,
     val lastTurn: Turn? = null,
     val desktopUtcOffsetSeconds: Int? = null,
     val isConnected: Boolean = false,
@@ -66,8 +67,11 @@ data class BuddyState(
             pendingPrompt = message.prompt,
         )
 
-        is InboundMessage.Command ->
-            if (message.verb == CommandVerbs.NAME) copy(deviceName = message.argument) else this
+        is InboundMessage.Command -> when (message.verb) {
+            CommandVerbs.NAME -> copy(deviceName = message.argument)
+            CommandVerbs.OWNER -> copy(ownerName = message.argument)
+            else -> this
+        }
 
         is InboundMessage.TurnEvent ->
             message.text?.takeIf { it.isNotBlank() }

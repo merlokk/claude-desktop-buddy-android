@@ -56,6 +56,13 @@ fun BuddyScreen(
         }
         Text(text = subtitle, style = MaterialTheme.typography.bodyLarge)
 
+        state.ownerName?.let { owner ->
+            Text(
+                text = stringResource(R.string.buddy_owner, owner),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
         state.desktopUtcOffsetSeconds?.let { offset ->
             Text(
                 text = stringResource(R.string.buddy_timezone, formatUtcOffset(offset)),
@@ -177,6 +184,7 @@ private fun BuddyScreenBusyPreview() {
                 tokens = 184502,
                 tokensToday = 31200,
                 lastTurn = Turn(role = "assistant", text = "I'll run the test suite now."),
+                ownerName = "Felix",
                 desktopUtcOffsetSeconds = -25200,
                 isConnected = true,
             ),
