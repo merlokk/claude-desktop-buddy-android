@@ -38,6 +38,7 @@ data class BuddyState(
     val approvals: Int = 0,
     val denials: Int = 0,
     val deviceName: String? = null,
+    val lastTurn: Turn? = null,
 ) {
 
     val activity: BuddyActivity
@@ -66,8 +67,12 @@ data class BuddyState(
         is InboundMessage.Command ->
             if (message.verb == CommandVerbs.NAME) copy(deviceName = message.argument) else this
 
+        is InboundMessage.TurnEvent ->
+            message.text?.takeIf { it.isNotBlank() }
+                ?.let { copy(lastTurn = Turn(role = message.role, text = it)) }
+                ?: this
+
         is InboundMessage.TimeSync,
-        is InboundMessage.TurnEvent,
         is InboundMessage.Unknown,
         -> this
     }
@@ -89,6 +94,12 @@ data class BuddyState(
         )
     }
 }
+
+/** The most recent completed turn surfaced on the buddy screen. */
+data class Turn(
+    val role: String,
+    val text: String,
+)
 
 /** The outcome of [BuddyState.answer]: the next state plus the decision to transmit. */
 data class PromptAnswer(

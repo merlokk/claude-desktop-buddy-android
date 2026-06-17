@@ -96,8 +96,32 @@ class BuddyStateTest {
         assertEquals(base, base.reduce(InboundMessage.Command(verb = "status", argument = null)))
         assertEquals(base, base.reduce(InboundMessage.Command(verb = "owner", argument = "Felix")))
         assertEquals(base, base.reduce(InboundMessage.Command(verb = "unpair", argument = null)))
-        assertEquals(base, base.reduce(InboundMessage.TurnEvent(role = "assistant", text = "hi")))
         assertEquals(base, base.reduce(InboundMessage.Unknown(raw = "{}")))
+    }
+
+    @Test
+    fun `a turn event with text becomes the last turn`() {
+        val state = BuddyState().reduce(InboundMessage.TurnEvent(role = "assistant", text = "Done"))
+
+        assertEquals(Turn(role = "assistant", text = "Done"), state.lastTurn)
+    }
+
+    @Test
+    fun `a turn event without text leaves the last turn unchanged`() {
+        val withTurn = BuddyState().reduce(InboundMessage.TurnEvent(role = "assistant", text = "Done"))
+
+        val after = withTurn.reduce(InboundMessage.TurnEvent(role = "user", text = null))
+
+        assertEquals(Turn(role = "assistant", text = "Done"), after.lastTurn)
+    }
+
+    @Test
+    fun `the last turn survives a later snapshot`() {
+        val state = BuddyState()
+            .reduce(InboundMessage.TurnEvent(role = "assistant", text = "Hello"))
+            .reduce(snapshot(running = 1, message = "busy"))
+
+        assertEquals(Turn(role = "assistant", text = "Hello"), state.lastTurn)
     }
 
     @Test

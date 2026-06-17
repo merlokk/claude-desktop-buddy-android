@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.example.claudedesktopbuddy.R
 import com.example.claudedesktopbuddy.buddy.BuddyActivity
 import com.example.claudedesktopbuddy.buddy.BuddyState
+import com.example.claudedesktopbuddy.buddy.Turn
 import com.example.claudedesktopbuddy.protocol.PermissionPrompt
 import com.example.claudedesktopbuddy.ui.theme.ClaudeDesktopBuddyTheme
 
@@ -55,6 +56,10 @@ fun BuddyScreen(
 
         state.pendingPrompt?.let { prompt ->
             PermissionPromptCard(prompt = prompt, onApprove = onApprove, onDeny = onDeny)
+        }
+
+        state.lastTurn?.let { turn ->
+            LastTurn(turn = turn)
         }
 
         Spacer(Modifier.height(8.dp))
@@ -103,6 +108,24 @@ private fun PermissionPromptCard(
 }
 
 @Composable
+private fun LastTurn(turn: Turn) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = turn.role.replaceFirstChar { it.uppercase() },
+                style = MaterialTheme.typography.labelMedium,
+            )
+            Text(text = turn.text, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
 private fun RecentEntries(entries: List<String>) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -130,7 +153,13 @@ private val BuddyActivity.labelRes: Int
 private fun BuddyScreenBusyPreview() {
     ClaudeDesktopBuddyTheme {
         BuddyScreen(
-            state = BuddyState(running = 1, statusMessage = "Running tests…", tokens = 184502, tokensToday = 31200),
+            state = BuddyState(
+                running = 1,
+                statusMessage = "Running tests…",
+                tokens = 184502,
+                tokensToday = 31200,
+                lastTurn = Turn(role = "assistant", text = "I'll run the test suite now."),
+            ),
             onApprove = {},
             onDeny = {},
         )
