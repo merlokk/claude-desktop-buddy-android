@@ -2,8 +2,10 @@ package com.example.claudedesktopbuddy
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -16,10 +18,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.claudedesktopbuddy.ble.blePermissions
+import com.example.claudedesktopbuddy.ble.hasBlePermissions
 import com.example.claudedesktopbuddy.buddy.BuddyAndroidViewModel
 import com.example.claudedesktopbuddy.ui.BuddyScreen
 import com.example.claudedesktopbuddy.ui.LogsScreen
@@ -44,6 +50,11 @@ fun ClaudeDesktopBuddyApp(
     var current by rememberSaveable { mutableStateOf(AppDestination.BUDDY) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val log by viewModel.log.collectAsStateWithLifecycle()
+
+    BleLifecycle(
+        onStart = viewModel::startTransport,
+        onStop = viewModel::stopTransport,
+    )
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
@@ -76,6 +87,32 @@ fun ClaudeDesktopBuddyApp(
                 )
             }
         }
+    }
+}
+
+/**
+ * Drives the BLE transport from the composition lifecycle: requests the runtime permissions once,
+ * starts the transport while the screen is in the foreground (once permitted), and stops it when
+ * the screen leaves the foreground.
+ */
+@Composable
+private fun BleLifecycle(onStart: () -> Unit, onStop: () -> Unit) {
+    val context = LocalContext.current
+    var permissionRequested by rememberSaveable { mutableStateOf(false) }
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        if (grants.values.all { it }) onStart()
+    }
+
+    LifecycleStartEffect(Unit) {
+        if (context.hasBlePermissions()) {
+            onStart()
+        } else if (blePermissions.isNotEmpty() && !permissionRequested) {
+            permissionRequested = true
+            launcher.launch(blePermissions)
+        }
+        onStopOrDispose { onStop() }
     }
 }
 

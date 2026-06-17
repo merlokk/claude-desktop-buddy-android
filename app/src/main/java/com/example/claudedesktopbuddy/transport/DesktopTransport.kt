@@ -21,4 +21,13 @@ interface DesktopTransport {
 
     /** Sends one complete line to the desktop; the `\n` terminator is appended by the transport. */
     suspend fun send(line: String)
+
+    /**
+     * Begins accepting connections (e.g. starts BLE advertising and the GATT server). Safe to call
+     * repeatedly — a transport that is already running ignores the call. Default: no-op.
+     */
+    fun start() {}
+
+    /** Releases the link and any radio resources. Default: no-op. */
+    fun stop() {}
 }

@@ -1,0 +1,250 @@
+package com.example.claudedesktopbuddy.ble
+
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothGattServer
+import android.bluetooth.BluetoothGattServerCallback
+import android.bluetooth.BluetoothGattService
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
+import android.bluetooth.BluetoothStatusCodes
+import android.bluetooth.le.AdvertiseCallback
+import android.bluetooth.le.AdvertiseData
+import android.bluetooth.le.AdvertiseSettings
+import android.bluetooth.le.BluetoothLeAdvertiser
+import android.content.Context
+import android.os.Build
+import android.os.ParcelUuid
+import com.example.claudedesktopbuddy.transport.DesktopTransport
+import com.example.claudedesktopbuddy.transport.encodeLine
+import com.example.claudedesktopbuddy.transport.LineAssembler
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
+
+/**
+ * [DesktopTransport] backed by a real BLE peripheral: the phone hosts the Nordic UART GATT service
+ * and the Claude desktop app connects as the central.
+ *
+ * Incoming writes on [NordicUart.RX] are reassembled by the tested [LineAssembler] and published on
+ * [incoming]; outgoing lines are framed by [encodeLine] and pushed as notifications on
+ * [NordicUart.TX], split to fit the negotiated MTU.
+ *
+ * This is the deliberately thin Android edge — the protocol logic lives in the unit-tested pure
+ * layers. Callers must ensure [blePermissions] are granted before [start]; the UI gates this, so
+ * the BLE calls are annotated [SuppressLint] for "MissingPermission".
+ */
+@SuppressLint("MissingPermission")
+class BleDesktopTransport(context: Context) : DesktopTransport {
+
+    private val appContext = context.applicationContext
+    private val bluetoothManager = appContext.getSystemService(BluetoothManager::class.java)
+
+    private val incomingLines = Channel<String>(Channel.UNLIMITED)
+    override val incoming: Flow<String> = incomingLines.receiveAsFlow()
+
+    private val assembler = LineAssembler()
+
+    private var gattServer: BluetoothGattServer? = null
+    private var txCharacteristic: BluetoothGattCharacteristic? = null
+    private var advertiser: BluetoothLeAdvertiser? = null
+
+    /** The connected/subscribed central, i.e. the desktop. Single central is enough for a buddy. */
+    @Volatile
+    private var central: BluetoothDevice? = null
+
+    @Volatile
+    private var mtu = DEFAULT_MTU
+
+    // Notifications are dispatched one at a time, awaiting onNotificationSent between chunks.
+    private val sendMutex = Mutex()
+
+    @Volatile
+    private var pendingNotification: CompletableDeferred<Boolean>? = null
+
+    override fun start() {
+        if (gattServer != null) return // already running
+        val manager = bluetoothManager ?: return
+        val adapter = manager.adapter ?: return
+        if (!adapter.isEnabled) return
+
+        val server = manager.openGattServer(appContext, serverCallback) ?: return
+        gattServer = server
+        server.addService(buildService())
+        startAdvertising()
+    }
+
+    override fun stop() {
+        advertiser?.stopAdvertising(advertiseCallback)
+        advertiser = null
+        gattServer?.close()
+        gattServer = null
+        txCharacteristic = null
+        central = null
+    }
+
+    override suspend fun send(line: String) {
+        val server = gattServer ?: return
+        val characteristic = txCharacteristic ?: return
+        val device = central ?: return
+        val payload = encodeLine(line)
+        val chunkSize = (mtu - ATT_HEADER_SIZE).coerceAtLeast(MIN_CHUNK_SIZE)
+
+        sendMutex.withLock {
+            var offset = 0
+            while (offset < payload.size) {
+                val end = minOf(offset + chunkSize, payload.size)
+                val chunk = payload.copyOfRange(offset, end)
+
+                val ack = CompletableDeferred<Boolean>()
+                pendingNotification = ack
+                val dispatched = notify(server, device, characteristic, chunk)
+                if (!dispatched) {
+                    pendingNotification = null
+                    return
+                }
+                val delivered = withTimeoutOrNull(NOTIFY_TIMEOUT_MS) { ack.await() } ?: false
+                pendingNotification = null
+                if (!delivered) return
+
+                offset = end
+            }
+        }
+    }
+
+    private fun buildService(): BluetoothGattService {
+        val service = BluetoothGattService(NordicUart.SERVICE, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+
+        val rx = BluetoothGattCharacteristic(
+            NordicUart.RX,
+            BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+            BluetoothGattCharacteristic.PERMISSION_WRITE,
+        )
+
+        val tx = BluetoothGattCharacteristic(
+            NordicUart.TX,
+            BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            BluetoothGattCharacteristic.PERMISSION_READ,
+        )
+        tx.addDescriptor(
+            BluetoothGattDescriptor(
+                NordicUart.CCCD,
+                BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE,
+            ),
+        )
+
+        service.addCharacteristic(rx)
+        service.addCharacteristic(tx)
+        txCharacteristic = tx
+        return service
+    }
+
+    private fun startAdvertising() {
+        val adapter = bluetoothManager?.adapter ?: return
+        val leAdvertiser = adapter.bluetoothLeAdvertiser ?: return
+        advertiser = leAdvertiser
+
+        val settings = AdvertiseSettings.Builder()
+            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+            .setConnectable(true)
+            .setTimeout(0)
+            .build()
+        // The 128-bit service UUID and the device name don't both fit in one 31-byte packet, so the
+        // name goes in the scan response.
+        val advertiseData = AdvertiseData.Builder()
+            .setIncludeDeviceName(false)
+            .addServiceUuid(ParcelUuid(NordicUart.SERVICE))
+            .build()
+        val scanResponse = AdvertiseData.Builder()
+            .setIncludeDeviceName(true)
+            .build()
+
+        leAdvertiser.startAdvertising(settings, advertiseData, scanResponse, advertiseCallback)
+    }
+
+    private fun notify(
+        server: BluetoothGattServer,
+        device: BluetoothDevice,
+        characteristic: BluetoothGattCharacteristic,
+        value: ByteArray,
+    ): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        server.notifyCharacteristicChanged(device, characteristic, false, value) ==
+            BluetoothStatusCodes.SUCCESS
+    } else {
+        @Suppress("DEPRECATION")
+        characteristic.value = value
+        @Suppress("DEPRECATION")
+        server.notifyCharacteristicChanged(device, characteristic, false)
+    }
+
+    private val serverCallback = object : BluetoothGattServerCallback() {
+
+        override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+            when (newState) {
+                BluetoothProfile.STATE_CONNECTED -> central = device
+                BluetoothProfile.STATE_DISCONNECTED -> if (device == central) central = null
+            }
+        }
+
+        override fun onCharacteristicWriteRequest(
+            device: BluetoothDevice,
+            requestId: Int,
+            characteristic: BluetoothGattCharacteristic,
+            preparedWrite: Boolean,
+            responseNeeded: Boolean,
+            offset: Int,
+            value: ByteArray?,
+        ) {
+            if (characteristic.uuid == NordicUart.RX && value != null) {
+                assembler.append(value).forEach(incomingLines::trySend)
+            }
+            if (responseNeeded) {
+                gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
+            }
+        }
+
+        override fun onDescriptorWriteRequest(
+            device: BluetoothDevice,
+            requestId: Int,
+            descriptor: BluetoothGattDescriptor,
+            preparedWrite: Boolean,
+            responseNeeded: Boolean,
+            offset: Int,
+            value: ByteArray?,
+        ) {
+            // The central subscribing to TX notifications identifies the desktop we notify.
+            if (descriptor.uuid == NordicUart.CCCD) {
+                central = device
+            }
+            if (responseNeeded) {
+                gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
+            }
+        }
+
+        override fun onNotificationSent(device: BluetoothDevice, status: Int) {
+            pendingNotification?.complete(status == BluetoothGatt.GATT_SUCCESS)
+        }
+
+        override fun onMtuChanged(device: BluetoothDevice, mtu: Int) {
+            this@BleDesktopTransport.mtu = mtu
+        }
+    }
+
+    private val advertiseCallback = object : AdvertiseCallback() {
+        // Advertising start/failure is observed via logcat; no app state depends on it yet.
+    }
+
+    private companion object {
+        const val DEFAULT_MTU = 23
+        const val ATT_HEADER_SIZE = 3 // ATT notification header (opcode + handle) consumes 3 bytes.
+        const val MIN_CHUNK_SIZE = 20 // MTU 23 - 3.
+        const val NOTIFY_TIMEOUT_MS = 2_000L
+    }
+}
