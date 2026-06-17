@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -61,8 +62,43 @@ class BuddyViewModelTest {
         val vm = newViewModel(transport)
 
         assertEquals(BuddyActivity.IDLE, vm.state.value.activity)
+        assertEquals(false, vm.state.value.isConnected)
         assertTrue(vm.log.value.entries.isEmpty())
         assertEquals(false, vm.log.value.enabled)
+    }
+
+    @Test
+    fun `an inbound line marks the connection alive`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+
+        transport.emit(snapshotBusy)
+
+        assertEquals(true, vm.state.value.isConnected)
+    }
+
+    @Test
+    fun `the connection goes stale after prolonged silence`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+        transport.emit(snapshotBusy)
+
+        advanceTimeBy(31_000)
+
+        assertEquals(false, vm.state.value.isConnected)
+    }
+
+    @Test
+    fun `a new inbound line resets the stale timer`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+
+        transport.emit(snapshotBusy)
+        advanceTimeBy(20_000)
+        transport.emit(snapshotBusy)
+        advanceTimeBy(20_000)
+
+        assertEquals(true, vm.state.value.isConnected)
     }
 
     @Test

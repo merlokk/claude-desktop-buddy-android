@@ -44,15 +44,24 @@ fun BuddyScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        val headlineRes = if (state.isConnected) state.activity.labelRes else R.string.activity_disconnected
         Text(
-            text = stringResource(state.activity.labelRes),
+            text = stringResource(headlineRes),
             style = MaterialTheme.typography.headlineMedium,
         )
 
-        Text(
-            text = state.statusMessage ?: stringResource(R.string.buddy_no_status),
-            style = MaterialTheme.typography.bodyLarge,
-        )
+        val subtitle = when {
+            !state.isConnected -> stringResource(R.string.buddy_waiting_desktop)
+            else -> state.statusMessage ?: stringResource(R.string.buddy_no_status)
+        }
+        Text(text = subtitle, style = MaterialTheme.typography.bodyLarge)
+
+        state.desktopUtcOffsetSeconds?.let { offset ->
+            Text(
+                text = stringResource(R.string.buddy_timezone, formatUtcOffset(offset)),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
 
         state.pendingPrompt?.let { prompt ->
             PermissionPromptCard(prompt = prompt, onApprove = onApprove, onDeny = onDeny)
@@ -141,6 +150,15 @@ private fun RecentEntries(entries: List<String>) {
     }
 }
 
+/** Formats a UTC offset in seconds as `UTC±HH:MM` (e.g. -25200 -> "UTC-07:00"). */
+private fun formatUtcOffset(totalSeconds: Int): String {
+    val sign = if (totalSeconds < 0) "-" else "+"
+    val absSeconds = kotlin.math.abs(totalSeconds)
+    val hours = absSeconds / 3600
+    val minutes = (absSeconds % 3600) / 60
+    return "UTC%s%02d:%02d".format(sign, hours, minutes)
+}
+
 private val BuddyActivity.labelRes: Int
     get() = when (this) {
         BuddyActivity.IDLE -> R.string.activity_idle
@@ -159,6 +177,8 @@ private fun BuddyScreenBusyPreview() {
                 tokens = 184502,
                 tokensToday = 31200,
                 lastTurn = Turn(role = "assistant", text = "I'll run the test suite now."),
+                desktopUtcOffsetSeconds = -25200,
+                isConnected = true,
             ),
             onApprove = {},
             onDeny = {},
@@ -175,6 +195,7 @@ private fun BuddyScreenPromptPreview() {
                 running = 1,
                 statusMessage = "approve: Bash",
                 pendingPrompt = PermissionPrompt(id = "req_1", tool = "Bash", hint = "rm -rf /tmp/foo"),
+                isConnected = true,
             ),
             onApprove = {},
             onDeny = {},

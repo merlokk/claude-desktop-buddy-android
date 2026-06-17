@@ -92,11 +92,19 @@ class BuddyStateTest {
     fun `non-snapshot messages leave the state unchanged`() {
         val base = BuddyState().reduce(snapshot(running = 1, message = "busy"))
 
-        assertEquals(base, base.reduce(InboundMessage.TimeSync(epochSeconds = 1, utcOffsetSeconds = 0)))
         assertEquals(base, base.reduce(InboundMessage.Command(verb = "status", argument = null)))
         assertEquals(base, base.reduce(InboundMessage.Command(verb = "owner", argument = "Felix")))
         assertEquals(base, base.reduce(InboundMessage.Command(verb = "unpair", argument = null)))
         assertEquals(base, base.reduce(InboundMessage.Unknown(raw = "{}")))
+    }
+
+    @Test
+    fun `a time sync records the desktop UTC offset`() {
+        val state = BuddyState().reduce(
+            InboundMessage.TimeSync(epochSeconds = 1775731234, utcOffsetSeconds = -25200),
+        )
+
+        assertEquals(-25200, state.desktopUtcOffsetSeconds)
     }
 
     @Test

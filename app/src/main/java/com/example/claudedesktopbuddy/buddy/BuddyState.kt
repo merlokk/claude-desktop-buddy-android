@@ -39,6 +39,8 @@ data class BuddyState(
     val denials: Int = 0,
     val deviceName: String? = null,
     val lastTurn: Turn? = null,
+    val desktopUtcOffsetSeconds: Int? = null,
+    val isConnected: Boolean = false,
 ) {
 
     val activity: BuddyActivity
@@ -72,9 +74,9 @@ data class BuddyState(
                 ?.let { copy(lastTurn = Turn(role = message.role, text = it)) }
                 ?: this
 
-        is InboundMessage.TimeSync,
-        is InboundMessage.Unknown,
-        -> this
+        is InboundMessage.TimeSync -> copy(desktopUtcOffsetSeconds = message.utcOffsetSeconds)
+
+        is InboundMessage.Unknown -> this
     }
 
     /**

@@ -9,7 +9,10 @@
     <string name="activity_idle">Idle</string>
     <string name="activity_busy">Working…</string>
     <string name="activity_awaiting_approval">Waiting for you</string>
+    <string name="activity_disconnected">Disconnected</string>
     <string name="buddy_no_status">Nothing happening yet.</string>
+    <string name="buddy_waiting_desktop">Waiting for the desktop…</string>
+    <string name="buddy_timezone">Desktop time zone: %1$s</string>
     <string name="buddy_tokens">Tokens: %1$d (today %2$d)</string>
     <string name="buddy_recent_title">Recent</string>
     <string name="prompt_question">Allow %1$s?</string>

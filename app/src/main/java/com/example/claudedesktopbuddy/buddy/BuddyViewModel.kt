@@ -12,6 +12,8 @@ import com.example.claudedesktopbuddy.protocol.ProtocolParser
 import com.example.claudedesktopbuddy.protocol.ProtocolSerializer
 import com.example.claudedesktopbuddy.transport.DesktopTransport
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +47,9 @@ class BuddyViewModel(
     /** Raw exchange log for the logs screen (disabled by default). */
     val log: StateFlow<ExchangeLog> = _log.asStateFlow()
 
+    // Restarted on every inbound line; if it ever elapses, the desktop has gone silent.
+    private var staleJob: Job? = null
+
     init {
         scope.launch {
             transport.incoming.collect(::onLineReceived)
@@ -52,6 +57,7 @@ class BuddyViewModel(
     }
 
     private fun onLineReceived(line: String) {
+        markConnectionAlive()
         _log.update { it.record(LogDirection.INCOMING, line) }
         val message = try {
             ProtocolParser.parse(line)
@@ -103,6 +109,20 @@ class BuddyViewModel(
         send(ProtocolSerializer.encode(answer.decision))
     }
 
+    /**
+     * Marks the link alive on any inbound line and (re)arms the stale timer. If no further line
+     * arrives within [STALE_TIMEOUT_MS] — the desktop sends a keepalive every ~10s — the connection
+     * is treated as dead.
+     */
+    private fun markConnectionAlive() {
+        _state.update { it.copy(isConnected = true) }
+        staleJob?.cancel()
+        staleJob = scope.launch {
+            delay(STALE_TIMEOUT_MS)
+            _state.update { it.copy(isConnected = false) }
+        }
+    }
+
     private fun send(line: String) {
         _log.update { it.record(LogDirection.OUTGOING, line) }
         scope.launch { transport.send(line) }
@@ -118,3 +138,6 @@ class BuddyViewModel(
         _log.update { it.cleared() }
     }
 }
+
+/** No keepalive/snapshot for this long means the desktop has gone silent (it sends one every ~10s). */
+private const val STALE_TIMEOUT_MS = 30_000L

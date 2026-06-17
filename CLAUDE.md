@@ -96,6 +96,8 @@ protocol reference, with a link back to its source).
 - BLE advertising with a `Claude`-prefixed device name (the phone's Bluetooth name is temporarily
   prefixed while advertising) so the desktop's device picker lists the phone.
 - Turn events → the latest turn (role + text) shown on the buddy screen.
+- Time sync → the desktop's UTC offset is shown as a time-zone line on the buddy screen.
+- Stale-connection detection → no inbound line for ~30s flips the buddy screen to "Disconnected".
 
 ### Not yet implemented
 
@@ -112,10 +114,8 @@ These parts of the protocol are intentionally not built yet:
   16, so bonds desync the moment the desktop "Forget"s and reconnects fail with
   `HCI_ERR_AUTH_FAILURE`. The `sec` flag and the `unpair` hook stay plumbed (transport
   `isLinkSecure` / `unpair`) with safe defaults, ready if a viable approach appears.
-- **Time sync** — `{"time":[...]}` is parsed but not yet used (no clock use).
 - **Status `stats` pet fields and battery current** — `vel` / `nap` / `lvl` are pet-specific and
   omitted; battery `mA` is omitted because its sign and units are device-dependent on Android.
-- **Stale-connection detection** — the "no snapshot for ~30s means dead" timeout is not enforced.
 
 ## Architecture
 
