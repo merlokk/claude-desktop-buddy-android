@@ -61,6 +61,49 @@ class ProtocolSerializerTest {
     }
 
     @Test
+    fun `encodes a full status ack`() {
+        val line = ProtocolSerializer.encode(
+            OutboundMessage.StatusAck(
+                DeviceStatus(
+                    name = "Pixel",
+                    secure = false,
+                    battery = BatteryStatus(percent = 87, milliVolts = 4012, milliAmps = -120, onUsb = true),
+                    system = SystemStatus(uptimeSeconds = 8412, freeHeapBytes = 84200),
+                    stats = BuddyStats(approvals = 42, denials = 3),
+                ),
+            ),
+        )
+
+        assertEquals(
+            """{"ack":"status","ok":true,"data":{"name":"Pixel","sec":false,""" +
+                """"bat":{"pct":87,"mV":4012,"mA":-120,"usb":true},""" +
+                """"sys":{"up":8412,"heap":84200},"stats":{"appr":42,"deny":3}}}""",
+            line,
+        )
+    }
+
+    @Test
+    fun `a status ack omits absent fields and sub-objects`() {
+        val line = ProtocolSerializer.encode(
+            OutboundMessage.StatusAck(
+                DeviceStatus(battery = BatteryStatus(percent = 50, onUsb = false)),
+            ),
+        )
+
+        assertEquals(
+            """{"ack":"status","ok":true,"data":{"bat":{"pct":50,"usb":false}}}""",
+            line,
+        )
+    }
+
+    @Test
+    fun `an empty status ack has an empty data object`() {
+        val line = ProtocolSerializer.encode(OutboundMessage.StatusAck(DeviceStatus()))
+
+        assertEquals("""{"ack":"status","ok":true,"data":{}}""", line)
+    }
+
+    @Test
     fun `escapes special characters in error text`() {
         val line = ProtocolSerializer.encode(
             OutboundMessage.CommandAck(command = "name", ok = false, error = """bad "value""""),

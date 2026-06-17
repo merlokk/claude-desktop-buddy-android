@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.claudedesktopbuddy.ble.BleDesktopTransport
+import com.example.claudedesktopbuddy.device.AndroidDeviceStatusProvider
 import com.example.claudedesktopbuddy.transport.DesktopTransport
 
 /**
@@ -19,9 +20,12 @@ import com.example.claudedesktopbuddy.transport.DesktopTransport
  * Transport lifecycle ([startTransport]/[stopTransport]) is driven by the UI, which gates it on the
  * BLE runtime permissions; the transport is also released in [onCleared].
  */
-class BuddyAndroidViewModel(private val transport: DesktopTransport) : ViewModel() {
+class BuddyAndroidViewModel(
+    private val transport: DesktopTransport,
+    statusProvider: DeviceStatusProvider,
+) : ViewModel() {
 
-    private val delegate = BuddyViewModel(transport, viewModelScope)
+    private val delegate = BuddyViewModel(transport, viewModelScope, statusProvider)
 
     val state = delegate.state
     val log = delegate.log
@@ -45,7 +49,10 @@ class BuddyAndroidViewModel(private val transport: DesktopTransport) : ViewModel
         val Factory = viewModelFactory {
             initializer {
                 val application = this[APPLICATION_KEY] as Application
-                BuddyAndroidViewModel(BleDesktopTransport(application))
+                BuddyAndroidViewModel(
+                    transport = BleDesktopTransport(application),
+                    statusProvider = AndroidDeviceStatusProvider(application),
+                )
             }
         }
     }

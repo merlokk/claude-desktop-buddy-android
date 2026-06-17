@@ -26,6 +26,12 @@ sealed interface OutboundMessage {
         val ok: Boolean,
         val error: String? = null,
     ) : OutboundMessage
+
+    /**
+     * Response to a `{"cmd":"status"}` poll, carrying the current [DeviceStatus]. The desktop uses
+     * it to populate the Hardware Buddy stats panel.
+     */
+    data class StatusAck(val status: DeviceStatus) : OutboundMessage
 }
 
 /** The decision carried by an [OutboundMessage.PermissionDecision]. */

@@ -34,6 +34,8 @@ data class BuddyState(
     val tokens: Long = 0,
     val tokensToday: Long = 0,
     val pendingPrompt: PermissionPrompt? = null,
+    val approvals: Int = 0,
+    val denials: Int = 0,
 ) {
 
     val activity: BuddyActivity
@@ -72,8 +74,13 @@ data class BuddyState(
      */
     fun answer(choice: PermissionChoice): PromptAnswer? {
         val prompt = pendingPrompt ?: return null
+        val cleared = copy(
+            pendingPrompt = null,
+            approvals = approvals + if (choice == PermissionChoice.APPROVE) 1 else 0,
+            denials = denials + if (choice == PermissionChoice.DENY) 1 else 0,
+        )
         return PromptAnswer(
-            state = copy(pendingPrompt = null),
+            state = cleared,
             decision = OutboundMessage.PermissionDecision(promptId = prompt.id, choice = choice),
         )
     }

@@ -2,6 +2,9 @@ package com.example.claudedesktopbuddy.buddy
 
 import com.example.claudedesktopbuddy.log.ExchangeLog
 import com.example.claudedesktopbuddy.log.LogDirection
+import com.example.claudedesktopbuddy.protocol.BuddyStats
+import com.example.claudedesktopbuddy.protocol.InboundMessage
+import com.example.claudedesktopbuddy.protocol.OutboundMessage
 import com.example.claudedesktopbuddy.protocol.PermissionChoice
 import com.example.claudedesktopbuddy.protocol.ProtocolParseException
 import com.example.claudedesktopbuddy.protocol.ProtocolParser
@@ -28,6 +31,7 @@ import kotlinx.coroutines.launch
 class BuddyViewModel(
     private val transport: DesktopTransport,
     private val scope: CoroutineScope,
+    private val statusProvider: DeviceStatusProvider = DeviceStatusProvider.Empty,
 ) {
 
     private val _state = MutableStateFlow(BuddyState())
@@ -54,6 +58,16 @@ class BuddyViewModel(
             return // Malformed line: already captured raw in the log, nothing to fold in.
         }
         _state.update { it.reduce(message) }
+        if (message is InboundMessage.Command && message.verb == STATUS_COMMAND) {
+            sendStatusAck()
+        }
+    }
+
+    private fun sendStatusAck() {
+        val current = _state.value
+        val status = statusProvider.status()
+            .copy(stats = BuddyStats(approvals = current.approvals, denials = current.denials))
+        send(ProtocolSerializer.encode(OutboundMessage.StatusAck(status)))
     }
 
     /** Approve the pending permission prompt, if any. */
@@ -83,3 +97,5 @@ class BuddyViewModel(
         _log.update { it.cleared() }
     }
 }
+
+private const val STATUS_COMMAND = "status"

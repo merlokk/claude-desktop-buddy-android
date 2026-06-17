@@ -131,6 +131,39 @@ class BuddyStateTest {
     }
 
     @Test
+    fun `approving increments the approval count`() {
+        val prompt = PermissionPrompt(id = "req_1", tool = "Bash", hint = null)
+        val state = BuddyState().reduce(snapshot(running = 1, prompt = prompt))
+
+        val next = state.answer(PermissionChoice.APPROVE)!!.state
+
+        assertEquals(1, next.approvals)
+        assertEquals(0, next.denials)
+    }
+
+    @Test
+    fun `denying increments the denial count`() {
+        val prompt = PermissionPrompt(id = "req_1", tool = "Bash", hint = null)
+        val state = BuddyState().reduce(snapshot(running = 1, prompt = prompt))
+
+        val next = state.answer(PermissionChoice.DENY)!!.state
+
+        assertEquals(0, next.approvals)
+        assertEquals(1, next.denials)
+    }
+
+    @Test
+    fun `decision counts survive later snapshots`() {
+        val prompt = PermissionPrompt(id = "req_1", tool = "Bash", hint = null)
+        val answered = BuddyState().reduce(snapshot(running = 1, prompt = prompt))
+            .answer(PermissionChoice.APPROVE)!!.state
+
+        val next = answered.reduce(snapshot(running = 1, message = "still working"))
+
+        assertEquals(1, next.approvals)
+    }
+
+    @Test
     fun `answering with no pending prompt returns null`() {
         val state = BuddyState().reduce(snapshot(running = 1))
 

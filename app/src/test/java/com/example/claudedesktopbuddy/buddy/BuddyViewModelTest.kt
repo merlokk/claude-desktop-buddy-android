@@ -1,6 +1,8 @@
 package com.example.claudedesktopbuddy.buddy
 
 import com.example.claudedesktopbuddy.log.LogDirection
+import com.example.claudedesktopbuddy.protocol.BatteryStatus
+import com.example.claudedesktopbuddy.protocol.DeviceStatus
 import com.example.claudedesktopbuddy.transport.DesktopTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,9 +39,12 @@ class BuddyViewModelTest {
         """{"running":1,"prompt":{"id":"req_abc","tool":"Bash","hint":"rm -rf /tmp"}}"""
 
     /** Builds a view model on an eager test scope so launched work runs synchronously. */
-    private fun TestScope.newViewModel(transport: FakeDesktopTransport): BuddyViewModel {
+    private fun TestScope.newViewModel(
+        transport: FakeDesktopTransport,
+        statusProvider: DeviceStatusProvider = DeviceStatusProvider.Empty,
+    ): BuddyViewModel {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
-        return BuddyViewModel(transport, scope)
+        return BuddyViewModel(transport, scope, statusProvider)
     }
 
     @Test
@@ -160,6 +165,41 @@ class BuddyViewModelTest {
 
         val outgoing = vm.log.value.entries.filter { it.direction == LogDirection.OUTGOING }
         assertEquals(listOf("""{"cmd":"permission","id":"req_abc","decision":"once"}"""), outgoing.map { it.line })
+    }
+
+    @Test
+    fun `a status command is answered with a status ack from the provider`() = runTest {
+        val transport = FakeDesktopTransport()
+        val provider = DeviceStatusProvider {
+            DeviceStatus(name = "Pixel", secure = false, battery = BatteryStatus(percent = 87, onUsb = true))
+        }
+        val vm = newViewModel(transport, provider)
+
+        transport.emit("""{"cmd":"status"}""")
+
+        assertEquals(
+            listOf(
+                """{"ack":"status","ok":true,"data":{"name":"Pixel","sec":false,""" +
+                    """"bat":{"pct":87,"usb":true},"stats":{"appr":0,"deny":0}}}""",
+            ),
+            transport.sent,
+        )
+    }
+
+    @Test
+    fun `the status ack reflects the current approval and denial counts`() = runTest {
+        val transport = FakeDesktopTransport()
+        val vm = newViewModel(transport)
+        transport.emit(snapshotWithPrompt)
+        vm.approve()
+
+        transport.emit("""{"cmd":"status"}""")
+
+        val statusAck = transport.sent.last()
+        assertEquals(
+            """{"ack":"status","ok":true,"data":{"stats":{"appr":1,"deny":0}}}""",
+            statusAck,
+        )
     }
 
     @Test
