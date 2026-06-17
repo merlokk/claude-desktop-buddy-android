@@ -8,6 +8,9 @@ local.properties
 # Machine-specific working notes (paths, run/test/log commands)
 local-memory.md
 
+# Local character packs (GIFs/manifests used for manual testing)
+characters/
+
 # Log/OS Files
 *.log
 
