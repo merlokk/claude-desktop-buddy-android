@@ -7,6 +7,9 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.OutputStream
 
+/** Sub-directory of `filesDir` where pushed character packs are stored, one folder per pack. */
+internal const val CHARACTER_PACKS_DIR = "character-packs"
+
 /**
  * Persists a pushed folder under the app's private storage: `filesDir/character-packs/<pack>/<path>`.
  *
@@ -16,7 +19,7 @@ import java.io.OutputStream
  */
 class AndroidCharacterPackSink(context: Context) : CharacterPackSink {
 
-    private val root = File(context.applicationContext.filesDir, "character-packs")
+    private val root = File(context.applicationContext.filesDir, CHARACTER_PACKS_DIR)
 
     private var packDir: File? = null
     private var currentFile: OutputStream? = null

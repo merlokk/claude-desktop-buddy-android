@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.claudedesktopbuddy.ble.BleDesktopTransport
+import com.example.claudedesktopbuddy.device.AndroidCharacterPackProvider
 import com.example.claudedesktopbuddy.device.AndroidCharacterPackSink
 import com.example.claudedesktopbuddy.device.AndroidDeviceStatusProvider
 import com.example.claudedesktopbuddy.transport.DesktopTransport
@@ -25,12 +26,14 @@ class BuddyAndroidViewModel(
     private val transport: DesktopTransport,
     statusProvider: DeviceStatusProvider,
     packSink: CharacterPackSink,
+    packProvider: CharacterPackProvider,
 ) : ViewModel() {
 
-    private val delegate = BuddyViewModel(transport, viewModelScope, statusProvider, packSink)
+    private val delegate = BuddyViewModel(transport, viewModelScope, statusProvider, packSink, packProvider)
 
     val state = delegate.state
     val log = delegate.log
+    val characterPack = delegate.characterPack
 
     fun approve() = delegate.approve()
     fun deny() = delegate.deny()
@@ -55,6 +58,7 @@ class BuddyAndroidViewModel(
                     transport = BleDesktopTransport(application),
                     statusProvider = AndroidDeviceStatusProvider(application),
                     packSink = AndroidCharacterPackSink(application),
+                    packProvider = AndroidCharacterPackProvider(application),
                 )
             }
         }

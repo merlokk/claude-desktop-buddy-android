@@ -36,9 +36,15 @@ class BuddyViewModel(
     private val scope: CoroutineScope,
     private val statusProvider: DeviceStatusProvider = DeviceStatusProvider.Empty,
     packSink: CharacterPackSink = CharacterPackSink.NoOp,
+    private val packProvider: CharacterPackProvider = CharacterPackProvider.None,
 ) {
 
     private val packReceiver = CharacterPackReceiver(packSink)
+
+    private val _characterPack = MutableStateFlow(packProvider.activePack())
+
+    /** The character pack to render as the avatar, or null when none has been pushed. */
+    val characterPack: StateFlow<CharacterPack?> = _characterPack.asStateFlow()
 
     private val _state = MutableStateFlow(BuddyState())
 
@@ -70,7 +76,13 @@ class BuddyViewModel(
         _state.update { it.reduce(message) }
         when (message) {
             is InboundMessage.Command -> handleCommand(message)
-            is InboundMessage.FolderPush -> send(ProtocolSerializer.encode(packReceiver.handle(message)))
+            is InboundMessage.FolderPush -> {
+                send(ProtocolSerializer.encode(packReceiver.handle(message)))
+                // A finished pack becomes the new avatar.
+                if (message is InboundMessage.FolderPush.CharEnd) {
+                    _characterPack.value = packProvider.activePack()
+                }
+            }
             else -> {} // Snapshots, turn events, time sync, and unknown lines need no reply.
         }
     }

@@ -2,6 +2,7 @@ package com.example.claudedesktopbuddy.buddy
 
 import com.example.claudedesktopbuddy.log.LogDirection
 import com.example.claudedesktopbuddy.protocol.BatteryStatus
+import com.example.claudedesktopbuddy.protocol.CharacterManifest
 import com.example.claudedesktopbuddy.protocol.DeviceStatus
 import com.example.claudedesktopbuddy.transport.DesktopTransport
 import kotlinx.coroutines.CoroutineScope
@@ -51,9 +52,10 @@ class BuddyViewModelTest {
     private fun TestScope.newViewModel(
         transport: FakeDesktopTransport,
         statusProvider: DeviceStatusProvider = DeviceStatusProvider.Empty,
+        packProvider: CharacterPackProvider = CharacterPackProvider.None,
     ): BuddyViewModel {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
-        return BuddyViewModel(transport, scope, statusProvider)
+        return BuddyViewModel(transport, scope, statusProvider, packProvider = packProvider)
     }
 
     @Test
@@ -326,6 +328,32 @@ class BuddyViewModelTest {
             ),
             transport.sent,
         )
+    }
+
+    @Test
+    fun `the active character pack is loaded on creation`() = runTest {
+        val pack = CharacterPack(
+            CharacterManifest(name = "bufo", colors = null, states = mapOf("idle" to listOf("idle.gif"))),
+            directoryPath = "/packs/bufo",
+        )
+        val vm = newViewModel(FakeDesktopTransport(), packProvider = { pack })
+
+        assertEquals(pack, vm.characterPack.value)
+    }
+
+    @Test
+    fun `a completed folder push refreshes the character pack`() = runTest {
+        val transport = FakeDesktopTransport()
+        var current: CharacterPack? = null
+        val vm = newViewModel(transport, packProvider = { current })
+        assertNull(vm.characterPack.value)
+
+        // The pack becomes readable only once the desktop finishes sending it.
+        current = CharacterPack(CharacterManifest(name = "bufo", colors = null, states = emptyMap()), "/packs/bufo")
+        transport.emit("""{"cmd":"char_begin","name":"bufo","total":0}""")
+        transport.emit("""{"cmd":"char_end"}""")
+
+        assertEquals(current, vm.characterPack.value)
     }
 
     @Test

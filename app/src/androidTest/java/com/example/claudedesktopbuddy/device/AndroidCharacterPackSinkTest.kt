@@ -11,6 +11,8 @@ import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -74,6 +76,32 @@ class AndroidCharacterPackSinkTest {
 
         assertArrayEquals(whole, File(packRoot, "big/blob.bin").readBytes())
         assertEquals(whole.size.toLong(), end.bytes)
+    }
+
+    @Test
+    fun provider_reads_back_the_pushed_pack() {
+        val receiver = CharacterPackReceiver(AndroidCharacterPackSink(context))
+        val manifest = """{"name":"bufo","states":{"idle":["idle_0.gif","idle_1.gif"],"busy":"busy.gif"}}"""
+            .toByteArray()
+
+        receiver.handle(FolderPush.CharBegin("bufo", manifest.size.toLong()))
+        receiver.handle(FolderPush.FileBegin("manifest.json", manifest.size.toLong()))
+        receiver.handle(chunkOf(manifest))
+        receiver.handle(FolderPush.FileEnd)
+        receiver.handle(FolderPush.CharEnd)
+
+        val pack = AndroidCharacterPackProvider(context).activePack()
+
+        assertNotNull("a pushed pack must be discoverable", pack)
+        assertEquals("bufo", pack!!.manifest.name)
+        assertEquals(listOf("idle_0.gif", "idle_1.gif"), pack.manifest.framesFor("idle"))
+        assertEquals(listOf("busy.gif"), pack.manifest.framesFor("busy"))
+        assertTrue(File(pack.directoryPath, "manifest.json").exists())
+    }
+
+    @Test
+    fun provider_returns_null_when_nothing_pushed() {
+        assertNull(AndroidCharacterPackProvider(context).activePack())
     }
 
     @Test
