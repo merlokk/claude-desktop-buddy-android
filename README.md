@@ -17,7 +17,8 @@ the Nordic UART Service, so from the desktop's point of view it is just another 
 - **Folder push** — folders dropped on the desktop's Hardware Buddy window are received and saved to
   the app's private storage.
 - **Character avatar** — a pushed character pack is shown as an animated GIF avatar in the top-left
-  of the Buddy screen, switching between sleep / idle / busy / attention to match what Claude is doing.
+  of the Buddy screen, switching between sleep / idle / busy / attention to match what Claude is
+  doing, with a brief heart flourish after you approve a prompt.
 
 ## Requirements
 

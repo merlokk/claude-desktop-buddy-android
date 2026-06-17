@@ -40,7 +40,8 @@ Two screens, reachable from the bottom navigation.
    - When a permission prompt arrives: the question (what is being approved — tool and hint) plus
      a set of choice buttons (approve / deny).
    - When a character pack has been pushed, its animated avatar sits in the top-left corner and
-     changes with the activity (sleep when disconnected, idle, busy, attention when a prompt waits).
+     changes with the activity (sleep when disconnected, idle, busy, attention when a prompt waits),
+     with a brief heart flourish after an approval.
 
 2. **Logs** — the raw exchange with the desktop. One JSON object per line, in order.
    - Logging can be turned **on and off**.
@@ -113,8 +114,9 @@ protocol reference, with a link back to its source).
   and the matching GIF is shown as an animated avatar in the top-left of the buddy screen. The buddy
   state picks the animation (disconnected → `sleep`, prompt pending → `attention`, running → `busy`,
   else `idle`), falling back to the `idle` frames when a state is absent; multi-GIF states rotate as
-  a carousel. Rendered with Coil. The `celebrate` / `dizzy` / `heart` states are left unused (they
-  need level-up / shake / quick-approval signals this port doesn't track).
+  a carousel. Rendered with Coil. `heart` plays for a few seconds after the user approves a prompt.
+  The `celebrate` / `dizzy` states are left unused (they need level-up / shake signals this port
+  doesn't track).
 
 ### Not yet implemented
 
