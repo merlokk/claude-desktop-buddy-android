@@ -6,9 +6,10 @@ import com.example.claudedesktopbuddy.protocol.CharacterManifest
  * The animation states a character pack can define (the upstream firmware's seven states). Each maps
  * to a key in the manifest's `states` object via [manifestKey].
  *
- * We only ever drive four of them from the buddy state (see [CharacterPresenter.stateFor]); the
- * remaining three need signals this port does not track (`celebrate` a level-up, `dizzy` a shake,
- * `heart` a quick approval) and are listed for completeness / future use.
+ * We drive four of them from the buddy state (see [CharacterPresenter.stateFor]) plus `heart` as a
+ * transient flourish after an approval (see the [celebrating] overload). The remaining two need
+ * signals this port does not track (`celebrate` a level-up, `dizzy` a shake) and are listed for
+ * completeness / future use.
  */
 enum class CharacterState(val manifestKey: String) {
     SLEEP("sleep"),
